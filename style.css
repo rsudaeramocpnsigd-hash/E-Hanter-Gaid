@@ -1185,237 +1185,453 @@ select.form-control option {
   box-shadow: var(--shadow-sm);
 }
 
+/* ==========================================================================
+   OFFICIAL HOSPITAL MEDICAL RECORD REPORT (STANDAR RESMI RSUD AERAMO)
+   FORM-RM-IGD-07
+   ========================================================================== */
 .official-paper-container {
   background: #ffffff;
-  color: #1e293b;
+  color: #0f172a;
   border-radius: var(--radius-md);
-  padding: 2.5rem 3rem;
-  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-  border: 1px solid #cbd5e1;
+  padding: 2.2rem 2.8rem;
+  box-shadow: 0 4px 25px rgba(15, 23, 42, 0.1);
+  border: 1.5px solid #cbd5e1;
   max-width: 1050px;
   margin: 0 auto;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
 }
 
-.paper-header {
+/* Kop Surat Kedinasan */
+.official-kop-wrapper {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding-bottom: 1rem;
+  gap: 1.25rem;
 }
 
-.hospital-brand {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.brand-logo-img {
-  width: 58px;
-  height: 58px;
-  background: #ffffff;
-  border-radius: 50%;
+.kop-logo-box {
+  width: 78px;
+  height: 78px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  border: 1px solid #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
 }
 
-.brand-logo-img img, .official-paper-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.kop-logo-img {
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
   display: block;
 }
 
-.hospital-name {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.dept-name {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #059669;
-}
-
-.hospital-address {
-  font-size: 0.76rem;
-  color: #64748b;
-}
-
-.document-badge {
-  text-align: right;
-}
-
-.doc-code {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #64748b;
-}
-
-.doc-title-badge {
-  display: inline-block;
-  margin-top: 0.25rem;
-  background: #0f172a;
-  color: #fff;
-  padding: 0.3rem 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  border-radius: 4px;
-}
-
-.paper-divider {
-  height: 3px;
-  background: #0f172a;
-  border-bottom: 1px solid #0f172a;
-  margin: 0.5rem 0 1.25rem 0;
-}
-
-.report-meta-box {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 0.85rem 1.15rem;
-  font-size: 0.82rem;
-}
-
-.meta-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-}
-
-.meta-item .lbl {
-  display: block;
-  color: #64748b;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.meta-item strong {
-  color: #0f172a;
-}
-
-.print-triage-summary {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.5rem;
-}
-
-.pt-box {
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  padding: 0.45rem;
+.kop-text-box {
+  flex: 1;
   text-align: center;
-  font-size: 0.72rem;
-  font-weight: 600;
+  line-height: 1.2;
 }
 
-.pt-box strong {
-  display: block;
-  font-size: 1.1rem;
-  margin-top: 0.15rem;
+.kop-pemda {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #000000;
+  margin-bottom: 2px;
+}
+
+.kop-dinkes {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #000000;
+  margin-bottom: 2px;
+}
+
+.kop-rsud {
+  font-size: 1.32rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #065f46;
+  margin: 2px 0;
+  text-transform: uppercase;
+}
+
+.kop-unit {
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #0f172a;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.kop-alamat {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #334155;
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.kop-kontak {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+.kop-code-box {
+  flex-shrink: 0;
+  border: 1.5px solid #0f172a;
+  border-radius: 4px;
+  padding: 6px 10px;
+  text-align: center;
+  background: #f8fafc;
+}
+
+.code-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.code-hdr {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.05em;
+}
+
+.code-num {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.03em;
   font-family: var(--font-mono);
 }
 
-.pt-red { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
-.pt-yellow { background: #fffbeb; border-color: #fde68a; color: #92400e; }
-.pt-green { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
-.pt-obs, .pt-ranap, .pt-pulang { background: #f8fafc; color: #334155; }
-
-.print-section-heading {
-  font-size: 0.88rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid #cbd5e1;
+.code-sub {
+  font-size: 0.6rem;
+  color: #059669;
+  font-weight: 700;
 }
 
-.print-table {
+/* Garis Ganda Surat Dinas */
+.kop-divider-double {
+  margin: 10px 0 16px 0;
+}
+
+.divider-thick {
+  height: 2.5px;
+  background: #000000;
+}
+
+.divider-thin {
+  height: 1px;
+  background: #000000;
+  margin-top: 2px;
+}
+
+/* Judul Dokumen Resmi */
+.official-title-block {
+  text-align: center;
+  margin: 8px 0 16px 0;
+}
+
+.title-main {
+  font-size: 1.05rem;
+  font-weight: 900;
+  text-decoration: underline;
+  text-transform: uppercase;
+  color: #000000;
+  letter-spacing: 0.03em;
+}
+
+.title-sub {
+  font-size: 0.74rem;
+  font-style: italic;
+  color: #475569;
+  margin-top: 3px;
+}
+
+/* Tabel Administrasi & Serah Terima Shift */
+.table-admin-official {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.74rem;
-  color: #0f172a;
-}
-
-.print-table th, .print-table td {
-  border: 1px solid #cbd5e1;
-  padding: 0.5rem 0.55rem;
-  vertical-align: top;
-}
-
-.print-table th {
-  background: #f1f5f9;
-  font-weight: 700;
-  text-align: left;
-}
-
-.print-signatures-area {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding-top: 1.5rem;
-}
-
-.sig-print-block {
-  text-align: center;
-  width: 220px;
+  border: 1.5px solid #0f172a;
+  margin-bottom: 16px;
   font-size: 0.78rem;
 }
 
-.sig-img-container {
-  height: 75px;
-  margin: 0.5rem 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 1px dashed #cbd5e1;
+.table-admin-official td {
+  padding: 6px 10px;
+  vertical-align: middle;
 }
 
-.sig-img-container img {
-  max-height: 70px;
-  max-width: 180px;
-}
-
-.doctor-name-print {
-  display: block;
-  font-size: 0.84rem;
+.admin-th {
+  background: #f1f5f9;
   font-weight: 700;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.admin-td {
+  border: 1px solid #cbd5e1;
   color: #0f172a;
 }
 
-.doctor-nip {
-  display: block;
-  font-size: 0.72rem;
-  color: #64748b;
-}
-
-.sig-print-center {
-  text-align: center;
-}
-
-.timestamp-ack {
-  font-size: 0.7rem;
-  color: #64748b;
-  margin-bottom: 0.4rem;
-}
-
-.stamp-box {
-  display: inline-block;
-  border: 2px dashed #059669;
+.badge-total-text {
   color: #059669;
   font-weight: 800;
+}
+
+/* Sections */
+.section-official-block {
+  margin-bottom: 16px;
+}
+
+.section-official-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-transform: uppercase;
+  border-bottom: 1.5px solid #0f172a;
+  padding-bottom: 3px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Matriks Sensus & Triase */
+.table-matrix-official {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1.5px solid #0f172a;
+  text-align: center;
   font-size: 0.72rem;
-  padding: 0.35rem 0.75rem;
+}
+
+.table-matrix-official th,
+.table-matrix-official td {
+  border: 1px solid #94a3b8;
+  padding: 5px 6px;
+}
+
+.header-group-row th {
+  background: #e2e8f0;
+  font-weight: 800;
+  color: #0f172a;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+
+.header-col-row th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #334155;
+  font-size: 0.7rem;
+}
+
+.table-matrix-official .col-red { background: #fef2f2; color: #991b1b; }
+.table-matrix-official .col-yellow { background: #fffbeb; color: #92400e; }
+.table-matrix-official .col-green { background: #ecfdf5; color: #065f46; }
+.table-matrix-official .col-ranap { background: #eff6ff; color: #1e40af; }
+
+.val-red { background: #fef2f2 !important; color: #991b1b !important; }
+.val-yellow { background: #fffbeb !important; color: #92400e !important; }
+.val-green { background: #ecfdf5 !important; color: #065f46 !important; }
+.val-ranap { background: #eff6ff !important; color: #1e40af !important; }
+
+.data-matrix-row td {
+  font-size: 1rem;
+  font-family: var(--font-mono);
+  font-weight: 800;
+}
+
+/* Tabel Pasien Resmi */
+.table-patients-official {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1.5px solid #0f172a;
+  font-size: 0.73rem;
+  margin-bottom: 16px;
+}
+
+.table-patients-official th {
+  background: #f1f5f9;
+  border: 1px solid #64748b;
+  padding: 7px 6px;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: left;
+}
+
+.table-patients-official td {
+  border: 1px solid #94a3b8;
+  padding: 6px 6px;
+  vertical-align: top;
+  color: #0f172a;
+}
+
+.badge-triage-print {
+  display: inline-block;
+  padding: 2px 6px;
   border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+  border: 1px solid transparent;
+}
+
+.triage-merah { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.triage-kuning { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.triage-hijau { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+.triage-hitam { background: #f1f5f9; color: #1e293b; border-color: #cbd5e1; }
+
+/* Klausul Penutup & Tanda Tangan Resmi */
+.official-closing-block {
+  margin-top: 14px;
+}
+
+.closing-text {
+  font-size: 0.74rem;
+  text-align: justify;
+  line-height: 1.45;
+  color: #334155;
+  margin-bottom: 16px;
+}
+
+.signature-grid-official {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 8px;
+}
+
+.sig-column {
+  text-align: center;
+  width: 220px;
+}
+
+.sig-header-role {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.sig-box-paper {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.sig-box-paper img {
+  max-height: 75px;
+  max-width: 190px;
+  object-fit: contain;
+}
+
+.sig-doctor-name {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 4px;
+}
+
+.sig-doctor-sub {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+/* Stempel Resmi RSUD Aeramo */
+.sig-center-column {
+  text-align: center;
+  width: 200px;
+}
+
+.sig-location-date {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.official-stamp-circle {
+  width: 86px;
+  height: 86px;
+  border: 2.5px solid #059669;
+  border-radius: 50%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 150, 105, 0.03);
+}
+
+.stamp-border-outer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stamp-border-inner {
+  border: 1px dashed #059669;
+  border-radius: 50%;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.stamp-line-1 {
+  font-size: 0.44rem;
+  font-weight: 800;
+  color: #059669;
+  letter-spacing: 0.02em;
+}
+
+.stamp-star {
+  font-size: 0.48rem;
+  font-weight: 800;
+  color: #059669;
+}
+
+.stamp-line-center {
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: #059669;
+  line-height: 1.1;
+}
+
+.stamp-line-bottom {
+  font-size: 0.44rem;
+  font-weight: 800;
+  color: #059669;
+  letter-spacing: 0.05em;
+}
+
+.sig-validation-time {
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+}
+
+.paper-footer-official {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #cbd5e1;
+  padding-top: 8px;
+  margin-top: 18px;
+  font-size: 0.66rem;
+  color: #64748b;
 }
 
 .paper-footer-note {
@@ -1773,9 +1989,17 @@ select.form-control option {
    PRINT MEDIA STYLES (@media print)
    ========================================================================== */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 10mm 12mm;
+  }
+
   body {
     background: #ffffff !important;
     color: #000000 !important;
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .app-header,
@@ -1788,7 +2012,9 @@ select.form-control option {
   .secondary-metrics-bar,
   .current-handover-card,
   .toolbar-card,
-  .patient-cards-grid {
+  .patient-cards-grid,
+  .card-header,
+  .sync-tools-grid {
     display: none !important;
   }
 
@@ -1800,8 +2026,17 @@ select.form-control option {
     width: 100% !important;
   }
 
+  .tab-pane {
+    display: none !important;
+  }
+
   #tab-report {
     display: block !important;
+  }
+
+  .report-toolbar,
+  .report-actions {
+    display: none !important;
   }
 
   .official-paper-container {
@@ -1813,12 +2048,36 @@ select.form-control option {
     width: 100% !important;
   }
 
-  .print-table th, .print-table td {
+  .table-admin-official,
+  .table-matrix-official,
+  .table-patients-official {
+    border: 1.5px solid #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .table-admin-official td,
+  .table-matrix-official th,
+  .table-matrix-official td,
+  .table-patients-official th,
+  .table-patients-official td {
     border: 1px solid #000000 !important;
   }
 
-  .paper-divider {
-    background: #000000 !important;
+  .table-patients-official tr {
+    page-break-inside: avoid !important;
+  }
+
+  .kop-logo-img {
+    display: block !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .official-stamp-circle {
+    border-color: #059669 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 

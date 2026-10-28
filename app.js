@@ -616,9 +616,17 @@ function renderPrintableReport() {
   document.getElementById('printStatRanap').textContent = patients.filter(p => p.status === 'Rawat Inap').length;
   document.getElementById('printStatPulang').textContent = patients.filter(p => p.status === 'Boleh Pulang').length;
 
-  document.getElementById('printDoctorNameReporter').textContent = `(${h.reporter})`;
-  document.getElementById('printDoctorNameReceiver').textContent = `(${h.receiver})`;
-  document.getElementById('printAckTimestamp').textContent = `Diserahterimakan pada: ${formatDateIndo(h.date)}, ${h.time} WITA`;
+  document.getElementById('printDoctorNameReporter').textContent = `( ${h.reporter} )`;
+  document.getElementById('printDoctorNameReceiver').textContent = `( ${h.receiver} )`;
+  
+  const dateSigEl = document.getElementById('printDateSignature');
+  if (dateSigEl) {
+    dateSigEl.textContent = formatDateIndo(h.date);
+  }
+  const ackTimeEl = document.getElementById('printAckTimestamp');
+  if (ackTimeEl) {
+    ackTimeEl.textContent = `Pukul: ${h.time} WITA`;
+  }
 
   // Signatures on paper
   const sigRepBox = document.getElementById('printSigReporterContainer');
@@ -645,30 +653,40 @@ function renderPrintableReport() {
     return;
   }
 
-  pBody.innerHTML = patients.map((p, idx) => `
+  pBody.innerHTML = patients.map((p, idx) => {
+    const trgClass = p.triage === 'Merah' ? 'triage-merah' : p.triage === 'Kuning' ? 'triage-kuning' : 'triage-hijau';
+    const trgLabel = p.triage === 'Merah' ? 'P1 - Merah' : p.triage === 'Kuning' ? 'P2 - Kuning' : 'P3 - Hijau';
+    return `
     <tr>
-      <td class="text-center">${idx + 1}</td>
-      <td><strong>${p.triage}</strong></td>
-      <td>
-        <strong>${escapeHtml(p.name)}</strong><br>
-        <small>RM: ${p.rm} • ${escapeHtml(p.age)}</small>
-      </td>
-      <td>${escapeHtml(p.diagnosis)}</td>
-      <td>${escapeHtml(p.dpjp || '-')}</td>
-      <td>
-        <small><strong>Lab:</strong> ${escapeHtml(p.lab || '-')}</small><br>
-        <small><strong>Rad:</strong> ${escapeHtml(p.rad || '-')}</small>
+      <td class="text-center" style="font-weight: 700;">${idx + 1}</td>
+      <td class="text-center">
+        <span class="badge-triage-print ${trgClass}">${trgLabel}</span>
       </td>
       <td>
-        <small><strong>KU:</strong> ${escapeHtml(p.condition)}</small><br>
-        <strong style="color: #92400e;">Pending:</strong> <small>${escapeHtml(p.pending)}</small>
+        <strong style="color: #0f172a;">${escapeHtml(p.name)}</strong><br>
+        <span style="font-family: monospace; font-size: 0.68rem; color: #475569;">No. RM: ${p.rm} (${escapeHtml(p.age)})</span>
+      </td>
+      <td><strong style="color: #1e293b;">${escapeHtml(p.diagnosis)}</strong></td>
+      <td><span style="color: #0f172a; font-weight: 600;">${escapeHtml(p.dpjp || '-')}</span></td>
+      <td>
+        <div style="font-size: 0.68rem; line-height: 1.35;">
+          <strong>Lab:</strong> ${escapeHtml(p.lab || '-')}<br>
+          <strong>Rad:</strong> ${escapeHtml(p.rad || '-')}
+        </div>
       </td>
       <td>
-        <strong>${p.status}</strong><br>
-        <small>${p.spri || '-'}</small>
+        <div style="font-size: 0.68rem; line-height: 1.35;">
+          <strong>TTV & Kondisi:</strong> ${escapeHtml(p.condition)}<br>
+          <strong style="color: #b45309;">Pending / Instruksi:</strong> ${escapeHtml(p.pending)}
+        </div>
+      </td>
+      <td>
+        <strong style="color: #047857;">${p.status}</strong>
+        ${p.spri ? `<br><span style="font-family: monospace; font-size: 0.65rem; color: #64748b;">SPRI: ${escapeHtml(p.spri)}</span>` : ''}
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // 5.6 MASTER DATA TABLES
