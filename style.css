@@ -2837,3 +2837,78 @@ select.form-control option {
   margin: 0.25rem 0 0.35rem 0;
   font-weight: 600;
 }
+
+/* ==========================================================================
+   GOOGLE SHEETS QUICK CONNECT & MODAL ENHANCEMENTS
+   ========================================================================== */
+.gas-sheet-link-banner {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.gas-sheet-link-banner .sheet-info h5 {
+  margin: 0 0 2px 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.gas-sheet-link-banner .sheet-info p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+.gas-quick-connect-box {
+  background: #ecfdf5;
+  border: 1.5px solid #10b981;
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.gas-quick-connect-box label {
+  font-size: 0.92rem;
+  margin-bottom: 0.5rem;
+  display: block;
+  color: #065f46;
+}
+
+.gas-quick-connect-box .input-with-button {
+  display: flex;
+  gap: 8px;
+}
+
+.gas-quick-connect-box input {
+  flex: 1;
+}
+
+/* Ensure clean display for KOP Surat Logo without background box/circle */
+.kop-logo-box {
+  width: 78px;
+  height: 78px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.kop-logo-img {
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+  display: block;
+}

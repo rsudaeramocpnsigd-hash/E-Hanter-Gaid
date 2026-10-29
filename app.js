@@ -1056,6 +1056,12 @@ function setupEventListeners() {
 
   const btnCopyGas2 = document.getElementById('btnCopyGasCodeBottom');
   if (btnCopyGas2) btnCopyGas2.addEventListener('click', copyGasCodeToClipboard);
+
+  const btnSaveGasDirect = document.getElementById('btnSaveGasModalDirectAndSync');
+  if (btnSaveGasDirect) btnSaveGasDirect.addEventListener('click', saveGasDirectFromModalAndSync);
+
+  const btnExportExcel = document.getElementById('btnExportExcelFromForm');
+  if (btnExportExcel) btnExportExcel.addEventListener('click', exportCurrentShiftToExcel);
 }
 
 function switchTab(tabId) {
@@ -1766,34 +1772,77 @@ async function testGSheetConnection() {
   }
 }
 
+function saveHandoverMasterFormSilently() {
+  const idInput = document.getElementById('inputHandoverId');
+  const dateInput = document.getElementById('inputHandoverDate');
+  const timeInput = document.getElementById('inputHandoverTime');
+  const shiftSelect = document.getElementById('selectHandoverShift');
+  const repSelect = document.getElementById('selectDokterPelapor');
+  const recSelect = document.getElementById('selectDokterPenerima');
+  const notesInput = document.getElementById('inputCatatanShift');
+
+  if (idInput && dateInput && timeInput && AppState.currentHandover) {
+    AppState.currentHandover.id = idInput.value.trim() || AppState.currentHandover.id;
+    AppState.currentHandover.date = dateInput.value.trim() || AppState.currentHandover.date;
+    AppState.currentHandover.time = timeInput.value.trim() || AppState.currentHandover.time;
+    if (shiftSelect) AppState.currentHandover.shift = shiftSelect.value;
+    if (repSelect) AppState.currentHandover.reporter = repSelect.value;
+    if (recSelect) AppState.currentHandover.receiver = recSelect.value;
+    if (notesInput) AppState.currentHandover.notes = notesInput.value.trim();
+    saveToStorage();
+  }
+}
+
 async function pushHandoverToGoogleSheets(isSilent = false) {
   const webAppUrl = (AppState.gsheet.webAppUrl || '').trim();
 
   // If Apps Script web app URL is not yet configured, guide the user
   if (!webAppUrl) {
     if (!isSilent) {
-      const proceed = confirm(
-        'Jembatan Google Apps Script belum terhubung ke spreadsheet Anda.\n\n' +
-        'Apakah Anda ingin membuka Panduan & Kode Apps Script sekarang?\n' +
-        '(Cukup salin-tempel kode ke menu Ekstensi > Apps Script di Google Sheets Anda).'
-      );
-      if (proceed) {
-        openGasModal();
-      }
+      openGasModal();
+      showToast('Koneksi Google Apps Script belum terpasang. Silakan masukkan URL Web App pada panduan.', 'warning');
     }
     return;
   }
+
+  if (!webAppUrl.startsWith('https://script.google.com/macros/s/') || !webAppUrl.includes('/exec')) {
+    if (!isSilent) {
+      alert('URL Google Apps Script tidak valid!\n\nURL harus berawalan "https://script.google.com/macros/s/..." dan berakhiran "/exec".\n\nSilakan periksa kembali URL hasil Deployment Web App Anda.');
+      openGasModal();
+    }
+    return;
+  }
+
+  // Visual loading feedback on sync buttons
+  const btnSyncForm = document.getElementById('btnSyncGSheetFromForm');
+  const btnSyncReport = document.getElementById('btnSyncGSheetFromReport');
+  const btnPushCurrent = document.getElementById('btnPushCurrentToGSheet');
+  
+  const buttonsToToggle = [btnSyncForm, btnSyncReport, btnPushCurrent].filter(Boolean);
+  const originalContents = buttonsToToggle.map(b => b.innerHTML);
+
+  buttonsToToggle.forEach(b => {
+    b.disabled = true;
+    b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...';
+  });
 
   if (!isSilent) {
     showToast('Mengirim data Handover ke Google Sheets...', 'info');
   }
 
-  const currentHandoverId = AppState.currentHandover.id;
-  const currentPatients = AppState.patients.filter(p => p.handoverId === currentHandoverId);
+  // Ensure latest inputs from master form are captured
+  saveHandoverMasterFormSilently();
+
+  const currentHandoverId = AppState.currentHandover ? AppState.currentHandover.id : '';
+  let currentPatients = AppState.patients.filter(p => p.handoverId === currentHandoverId);
+  // Robust fallback: if no patient has matching handoverId, include all active patients
+  if (currentPatients.length === 0 && AppState.patients.length > 0) {
+    currentPatients = AppState.patients;
+  }
 
   const payload = {
     action: 'saveHandover',
-    handover: AppState.currentHandover,
+    handover: AppState.currentHandover || {},
     patients: currentPatients
   };
 
@@ -1810,13 +1859,114 @@ async function pushHandoverToGoogleSheets(isSilent = false) {
 
     AppState.gsheet.lastSync = new Date().toISOString();
     saveToStorage();
-    showToast(`✓ Berhasil tersinkron ke Google Sheets! (${currentPatients.length} pasien)`, 'success');
+    
+    if (!isSilent) {
+      showToast(`✓ Berhasil tersinkron ke Google Sheets! (${currentPatients.length} pasien)`, 'success');
+      alert(`✓ BERHASIL MENGIRIM KE GOOGLE SHEETS!\n\nData sesi Handover (${payload.handover.id || '-'}) dan ${currentPatients.length} data pasien telah berhasil dicatat ke Google Sheets Anda:\n${AppState.gsheet.sheetUrl || 'Google Spreadsheet'}\n\nSilakan cek lembar kerja "Handover" dan "Pasien IGD".`);
+    }
   } catch (err) {
     console.error('GAS Push error:', err);
     if (!isSilent) {
-      showToast('Gagal mengirim ke Google Sheets. Periksa URL Apps Script.', 'error');
+      showToast('Gagal mengirim ke Google Sheets. Periksa koneksi internet atau hak akses Apps Script.', 'error');
+      alert('Gagal mengirim ke Google Sheets:\n' + (err.message || err) + '\n\nPastikan:\n1. Koneksi internet aktif.\n2. Saat Terapkan (Deploy) di Apps Script, opsi "Yang memiliki akses (Who has access)" disetel ke "Siapa saja (Anyone)".');
     }
+  } finally {
+    buttonsToToggle.forEach((b, idx) => {
+      b.disabled = false;
+      b.innerHTML = originalContents[idx];
+    });
   }
+}
+
+function saveGasDirectFromModalAndSync() {
+  const inputDirect = document.getElementById('inputGasModalDirectUrl');
+  if (!inputDirect) return;
+  const url = inputDirect.value.trim();
+
+  if (!url) {
+    showToast('Mohon tempelkan URL Web App Apps Script terlebih dahulu.', 'warning');
+    inputDirect.focus();
+    return;
+  }
+
+  if (!url.startsWith('https://script.google.com/macros/s/') || !url.includes('/exec')) {
+    alert('URL Apps Script tidak valid!\n\nURL harus berawalan "https://script.google.com/macros/s/..."\ndan berakhiran "/exec".\n\nSilakan cek kembali URL hasil deployment Web App Anda.');
+    inputDirect.focus();
+    return;
+  }
+
+  AppState.gsheet.webAppUrl = url;
+  const inputMaster = document.getElementById('inputGasWebAppUrl');
+  if (inputMaster) inputMaster.value = url;
+
+  saveToStorage();
+  updateGSheetUI();
+  closeGasModal();
+  showToast('✓ URL Google Apps Script berhasil disimpan!', 'success');
+  
+  // Langsung kirim data handover sekarang
+  pushHandoverToGoogleSheets(false);
+}
+
+function exportCurrentShiftToExcel() {
+  saveHandoverMasterFormSilently();
+  const ho = AppState.currentHandover || {};
+  const currentHandoverId = ho.id || '';
+  let patients = AppState.patients.filter(p => p.handoverId === currentHandoverId);
+  if (patients.length === 0 && AppState.patients.length > 0) {
+    patients = AppState.patients;
+  }
+
+  // Format CSV lines
+  const lines = [];
+  lines.push('LEMBAR SERAH TERIMA JAGA DOKTER (HANDOVER) - RSUD AERAMO');
+  lines.push('Instalasi Gawat Darurat (IGD)');
+  lines.push('');
+  lines.push('DATA SESI SHIFT');
+  lines.push(`"ID Handover","${ho.id || '-'}"`);
+  lines.push(`"Tanggal","${ho.date || '-'}"`);
+  lines.push(`"Waktu","${ho.time || '-'}"`);
+  lines.push(`"Shift Jaga","${ho.shift || '-'}"`);
+  lines.push(`"Dokter Melaporkan (Lama)","${ho.reporter || '-'}"`);
+  lines.push(`"Dokter Menerima (Baru)","${ho.receiver || '-'}"`);
+  lines.push(`"Total Pasien","${patients.length}"`);
+  lines.push(`"Catatan Shift","${(ho.notes || '-').replace(/"/g, '""')}"`);
+  lines.push('');
+  lines.push('DAFTAR OPERAN RINCIAN KLINIS PASIEN');
+  lines.push('"No","Triase","No RM","Nama Pasien","Usia","Diagnosis Kerja","Konsul DPJP","Laboratorium","Radiologi","Kondisi Terakhir","Pending Terapi","SPRI","Status"');
+
+  patients.forEach((p, index) => {
+    lines.push([
+      index + 1,
+      `"${(p.triage || '-').replace(/"/g, '""')}"`,
+      `"${(p.rm || '-').replace(/"/g, '""')}"`,
+      `"${(p.name || '-').replace(/"/g, '""')}"`,
+      `"${(p.age || '-').replace(/"/g, '""')}"`,
+      `"${(p.diagnosis || '-').replace(/"/g, '""')}"`,
+      `"${(p.dpjp || '-').replace(/"/g, '""')}"`,
+      `"${(p.lab || '-').replace(/"/g, '""')}"`,
+      `"${(p.rad || '-').replace(/"/g, '""')}"`,
+      `"${(p.condition || '-').replace(/"/g, '""')}"`,
+      `"${(p.pending || '-').replace(/"/g, '""')}"`,
+      `"${(p.spri || '-').replace(/"/g, '""')}"`,
+      `"${(p.status || 'Observasi').replace(/"/g, '""')}"`
+    ].join(','));
+  });
+
+  const csvContent = '﻿' + lines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeDate = (ho.date || 'rekap').replace(/[^a-zA-Z0-9]/g, '_');
+  const safeShift = (ho.shift || 'shift').replace(/[^a-zA-Z0-9]/g, '_');
+  a.href = url;
+  a.download = `Handover_IGD_RSUD_Aeramo_${safeDate}_${safeShift}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast('✓ Rekap data Handover shift berhasil diunduh (CSV / Excel)!', 'success');
 }
 
 function saveGSheetConfigFromUI() {
@@ -1844,12 +1994,16 @@ function updateGSheetUI() {
   const displayId = document.getElementById('displaySheetId');
   const openLink = document.getElementById('btnOpenSpreadsheetExternal');
   const headerLink = document.getElementById('btnHeaderGSheetLink');
+  const modalDirectInput = document.getElementById('inputGasModalDirectUrl');
 
   if (urlInput && AppState.gsheet.sheetUrl) {
     urlInput.value = AppState.gsheet.sheetUrl;
   }
   if (webAppInput && AppState.gsheet.webAppUrl) {
     webAppInput.value = AppState.gsheet.webAppUrl;
+  }
+  if (modalDirectInput && AppState.gsheet.webAppUrl) {
+    modalDirectInput.value = AppState.gsheet.webAppUrl;
   }
   if (displayId && AppState.gsheet.sheetId) {
     displayId.textContent = AppState.gsheet.sheetId;
@@ -1865,8 +2019,13 @@ function updateGSheetUI() {
 function openGasModal() {
   const modal = document.getElementById('modalGasGuide');
   const pre = document.getElementById('gasCodePre');
+  const modalDirectInput = document.getElementById('inputGasModalDirectUrl');
+
   if (pre && typeof GAS_BACKEND_CODE !== 'undefined') {
     pre.textContent = GAS_BACKEND_CODE;
+  }
+  if (modalDirectInput && AppState.gsheet.webAppUrl) {
+    modalDirectInput.value = AppState.gsheet.webAppUrl;
   }
   if (modal) modal.classList.add('show');
 }
@@ -1893,6 +2052,8 @@ window.deletePatient = deletePatient;
 window.quickUpdateStatus = quickUpdateStatus;
 window.toggleDoctorStatus = toggleDoctorStatus;
 window.toggleDpjpStatus = toggleDpjpStatus;
+window.saveGasDirectFromModalAndSync = saveGasDirectFromModalAndSync;
+window.exportCurrentShiftToExcel = exportCurrentShiftToExcel;
 
 // Start the app on DOM ready
 document.addEventListener('DOMContentLoaded', initApp);
