@@ -4,7 +4,7 @@
  * ==============================================================================
  * 
  * Target Spreadsheet:
- * https://docs.google.com/spreadsheets/d/1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA/edit
+ * https://docs.google.com/spreadsheets/d/1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o/edit
  * 
  * CARA PEMASANGAN (HANYA 1 MENIT):
  * 1. Buka spreadsheet Google Sheets Anda di browser.
@@ -245,4 +245,80 @@ function ensureRingkasanHeaders(sheet) {
 function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * ==============================================================================
+ * 4. FUNGSI SETUP OTOMATIS (Klik 'Jalankan' / 'Run' pada fungsi ini di Apps Script)
+ * ==============================================================================
+ * Otomatis membuat dan merapikan 5 sheet utama:
+ * - Handover
+ * - Pasien IGD
+ * - Ringkasan Pasien
+ * - USER (Dokter Jaga)
+ * - USER DPJP (Dokter Spesialis)
+ */
+function setupSpreadsheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. Sheet Handover
+  const handoverSheet = ss.getSheetByName('Handover') || ss.insertSheet('Handover');
+  ensureHandoverHeaders(handoverSheet);
+  handoverSheet.getRange(1, 1, 1, 8).setBackground('#059669').setFontColor('#ffffff').setFontWeight('bold');
+
+  // 2. Sheet Pasien IGD
+  const pasienSheet = ss.getSheetByName('Pasien IGD') || ss.insertSheet('Pasien IGD');
+  ensurePasienHeaders(pasienSheet);
+  pasienSheet.getRange(1, 1, 1, 14).setBackground('#059669').setFontColor('#ffffff').setFontWeight('bold');
+
+  // 3. Sheet Ringkasan Pasien
+  const ringkasanSheet = ss.getSheetByName('Ringkasan Pasien') || ss.insertSheet('Ringkasan Pasien');
+  ensureRingkasanHeaders(ringkasanSheet);
+  ringkasanSheet.getRange(1, 1, 1, 8).setBackground('#059669').setFontColor('#ffffff').setFontWeight('bold');
+
+  // 4. Sheet USER (Dokter Jaga IGD)
+  const userSheet = ss.getSheetByName('USER') || ss.insertSheet('USER');
+  if (userSheet.getLastRow() === 0) {
+    userSheet.appendRow(['Nama Dokter', 'Status Aktif']);
+    userSheet.getRange(1, 1, 1, 2).setBackground('#059669').setFontColor('#ffffff').setFontWeight('bold');
+    const defaultDoctors = [
+      ['dr. Dian', 1],
+      ['dr. Camelia', 1],
+      ['dr. Maria Monika', 1],
+      ['dr. Anskariani', 1],
+      ['dr. Rounali', 1],
+      ['dr. Gabriela', 1],
+      ['dr. Ernilinda', 1],
+      ['dr. Kandida', 1],
+      ['dr. Adelaide', 1]
+    ];
+    defaultDoctors.forEach(function(r) { userSheet.appendRow(r); });
+  }
+
+  // 5. Sheet USER DPJP (Dokter Konsultan Spesialis)
+  const dpjpSheet = ss.getSheetByName('USER DPJP') || ss.insertSheet('USER DPJP');
+  if (dpjpSheet.getLastRow() === 0) {
+    dpjpSheet.appendRow(['Nama Dokter Spesialis DPJP', 'Status Aktif']);
+    dpjpSheet.getRange(1, 1, 1, 2).setBackground('#059669').setFontColor('#ffffff').setFontWeight('bold');
+    const defaultDpjps = [
+      ['dr. Erik, Sp.PD', 1],
+      ['dr. Andreas, Sp.PD', 1],
+      ['dr. Rastu, Sp.B', 1],
+      ['dr. Josef, Sp.B', 1],
+      ['dr. Sari, Sp.A', 1],
+      ['dr. Polo, Sp.OG', 1],
+      ['dr. Yona, Sp.OG', 1],
+      ['dr. Asih, Sp.S', 1],
+      ['dr. Ngurah, Sp.M', 1],
+      ['dr. Andris, Sp.THT', 1],
+      ['dr. Roland, Sp.KJ', 1]
+    ];
+    defaultDpjps.forEach(function(r) { dpjpSheet.appendRow(r); });
+  }
+
+  try {
+    SpreadsheetApp.getUi().alert('Setup Selesai! Seluruh 5 Sheet untuk E-Hanter Gaid berhasil disiapkan.');
+  } catch (e) {
+    Logger.log('Setup selesai!');
+  }
 }
