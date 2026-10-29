@@ -2830,3 +2830,10 @@ select.form-control option {
   padding: 0.2rem 0.5rem;
   border-radius: 6px;
 }
+
+.auth-footer-address {
+  font-size: 0.72rem;
+  color: #475569;
+  margin: 0.25rem 0 0.35rem 0;
+  font-weight: 600;
+}
