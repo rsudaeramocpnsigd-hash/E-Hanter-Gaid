@@ -1,4 +1,4 @@
-# E-Hanter Gaid — Elektronik Hardcover Dokter Jaga IGD
+# E-Hanter Gaid — Elektronik Handover Dokter Jaga IGD • RSUD Aeramo
 
 Sistem Informasi dan Aplikasi Terintegrasi Handover Dokter IGD untuk digitalisasi serah terima shift jaga medis, monitoring triase secara real-time, penerbitan Surat Permintaan Rawat Inap (SPRI), tanda tangan digital dokter, serta integrasi langsung dengan **Google Sheets** dan **Cloudflare Pages**.
 
