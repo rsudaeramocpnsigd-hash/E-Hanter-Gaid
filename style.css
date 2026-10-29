@@ -2349,9 +2349,14 @@ select.form-control option {
 }
 
 .auth-overlay.d-none {
+  display: none !important;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+}
+
+.d-none {
+  display: none !important;
 }
 
 .auth-container {

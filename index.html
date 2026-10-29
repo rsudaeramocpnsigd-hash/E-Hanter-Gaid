@@ -16,7 +16,7 @@
     rel="stylesheet">
   <!-- Font Awesome Icons for Medical UI -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=modal-scroll-side-20261028">
+  <link rel="stylesheet" href="style.css?v=auth-fix-20261029">
 </head>
 
 <body>
@@ -1523,10 +1523,10 @@
 
           <!-- Action Buttons -->
           <div class="auth-actions-group">
-            <button type="submit" class="btn btn-primary btn-block btn-lg btn-auth-submit" id="btnLoginSubmit">
+            <button type="button" class="btn btn-primary btn-block btn-lg btn-auth-submit" id="btnLoginSubmit" onclick="handleDoctorLogin(false)">
               <i class="fa-solid fa-right-to-bracket"></i> Masuk ke Sistem Handover
             </button>
-            <button type="button" class="btn btn-emergency-bypass btn-block" id="btnLoginEmergency" title="Masuk cepat tanpa verifikasi PIN saat penanganan gawat darurat">
+            <button type="button" class="btn btn-emergency-bypass btn-block" id="btnLoginEmergency" onclick="handleDoctorLogin(true)" title="Masuk cepat tanpa verifikasi PIN saat penanganan gawat darurat">
               <i class="fa-solid fa-bolt-lightning text-amber"></i> Akses Cepat Darurat IGD (Bypass PIN)
             </button>
           </div>
@@ -1590,7 +1590,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Application Logic -->
-  <script src="app.js?v=shift-update-20261028"></script>
+  <script src="app.js?v=auth-fix-20261029"></script>
 </body>
 
 </html>

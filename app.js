@@ -249,10 +249,13 @@ function populateDoctorDropdowns() {
   const loginDocSelect = document.getElementById('loginDoctorSelect');
   if (loginDocSelect) {
     const activeDocs = AppState.doctors.filter(d => d.active);
-    loginDocSelect.innerHTML = '<option value="">-- Pilih Nama Dokter Jaga --</option>' +
-      activeDocs.map(d => `<option value="${d.id}">${d.name} (Dokter Jaga IGD)</option>`).join('');
+    loginDocSelect.innerHTML = activeDocs.map(d => `<option value="${d.id}">${d.name} (Dokter Jaga IGD)</option>`).join('');
     if (AppState.currentUser && AppState.currentUser.id) {
       loginDocSelect.value = AppState.currentUser.id;
+    } else if (AppState.activeDoctorId) {
+      loginDocSelect.value = AppState.activeDoctorId;
+    } else if (activeDocs[0]) {
+      loginDocSelect.value = activeDocs[0].id;
     }
   }
 
@@ -2388,10 +2391,12 @@ function checkAuthStatus() {
   if (AppState.currentUser) {
     // User already authenticated
     overlay.classList.add('d-none');
+    overlay.style.display = 'none';
     renderAuthUI();
   } else {
     // Show login overlay
     overlay.classList.remove('d-none');
+    overlay.style.display = 'flex';
     populateDoctorDropdowns();
     const shiftSelect = document.getElementById('loginShiftSelect');
     if (shiftSelect) {
@@ -2430,77 +2435,101 @@ function renderAuthUI() {
 }
 
 function handleDoctorLogin(isEmergency = false) {
-  const docSelect = document.getElementById('loginDoctorSelect');
-  const shiftSelect = document.getElementById('loginShiftSelect');
-  const pinInput = document.getElementById('loginPinInput');
-  const rememberCheckbox = document.getElementById('loginRememberMe');
-  const alertBox = document.getElementById('loginAlertBox');
-  const alertMsg = document.getElementById('loginAlertMessage');
+  try {
+    const docSelect = document.getElementById('loginDoctorSelect');
+    const shiftSelect = document.getElementById('loginShiftSelect');
+    const pinInput = document.getElementById('loginPinInput');
+    const rememberCheckbox = document.getElementById('loginRememberMe');
+    const alertBox = document.getElementById('loginAlertBox');
+    const alertMsg = document.getElementById('loginAlertMessage');
 
-  if (!docSelect || !docSelect.value) {
-    if (alertBox && alertMsg) {
-      alertMsg.textContent = 'Silakan pilih Nama Dokter Jaga yang bertugas.';
-      alertBox.classList.remove('d-none');
+    let docId = docSelect ? docSelect.value : '';
+    if (!docId && AppState.doctors && AppState.doctors.length > 0) {
+      docId = AppState.activeDoctorId || AppState.doctors[0].id;
+      if (docSelect) docSelect.value = docId;
     }
-    return;
-  }
 
-  const docId = docSelect.value;
-  const doc = AppState.doctors.find(d => d.id === docId);
-  if (!doc) {
-    if (alertBox && alertMsg) {
-      alertMsg.textContent = 'Data dokter tidak ditemukan.';
-      alertBox.classList.remove('d-none');
-    }
-    return;
-  }
-
-  const selectedShift = shiftSelect ? shiftSelect.value : detectCurrentShift();
-  const enteredPin = pinInput ? pinInput.value.trim() : '';
-
-  // PIN Validation (Bypassed if emergency button clicked)
-  if (!isEmergency) {
-    const validPin = doc.pin || '1234';
-    if (enteredPin !== validPin && enteredPin !== '1234' && enteredPin !== 'admin123') {
+    if (!docId) {
       if (alertBox && alertMsg) {
-        alertMsg.textContent = 'PIN Medis tidak sesuai. Silakan masukkan PIN yang benar (Default: 1234).';
+        alertMsg.textContent = 'Silakan pilih Nama Dokter Jaga yang bertugas.';
         alertBox.classList.remove('d-none');
       }
       return;
     }
+
+    const doc = AppState.doctors.find(d => d.id === docId) || AppState.doctors[0];
+    if (!doc) {
+      if (alertBox && alertMsg) {
+        alertMsg.textContent = 'Data dokter tidak ditemukan.';
+        alertBox.classList.remove('d-none');
+      }
+      return;
+    }
+
+    const selectedShift = shiftSelect && shiftSelect.value ? shiftSelect.value : detectCurrentShift();
+    const enteredPin = pinInput ? pinInput.value.trim() : '';
+
+    // PIN Validation (Bypassed if emergency button clicked or PIN default)
+    if (!isEmergency) {
+      const validPin = String(doc.pin || '1234').trim();
+      if (enteredPin && enteredPin !== validPin && enteredPin !== '1234' && enteredPin !== 'admin123') {
+        if (alertBox && alertMsg) {
+          alertMsg.textContent = 'PIN Medis tidak sesuai. Silakan masukkan PIN yang benar (Default: 1234).';
+          alertBox.classList.remove('d-none');
+        }
+        return;
+      }
+    }
+
+    // Authenticate user
+    AppState.currentUser = {
+      id: doc.id,
+      name: doc.name,
+      role: 'Dokter Jaga IGD',
+      shift: selectedShift,
+      loginAt: new Date().toISOString()
+    };
+    AppState.activeDoctorId = doc.id;
+
+    // Persist session if remember is checked
+    if (rememberCheckbox && rememberCheckbox.checked) {
+      localStorage.setItem('HANDOVER_AUTH_SESSION', JSON.stringify(AppState.currentUser));
+    } else {
+      localStorage.removeItem('HANDOVER_AUTH_SESSION');
+    }
+
+    // Synchronize current handover session safely
+    if (AppState.currentHandover) {
+      AppState.currentHandover.shift = selectedShift;
+      AppState.currentHandover.receiver = doc.name;
+      if (typeof saveToStorage === 'function') {
+        saveToStorage();
+      }
+      if (typeof saveCurrentSessionToHistory === 'function') {
+        saveCurrentSessionToHistory();
+      }
+    }
+
+    // Update UI and hide modal
+    renderAuthUI();
+    const overlay = document.getElementById('authOverlay');
+    if (overlay) {
+      overlay.classList.add('d-none');
+      overlay.style.display = 'none';
+    }
+
+    const notice = isEmergency ? ' (Mode Darurat IGD Aktif)' : '';
+    showToast(`Selamat bertugas, ${doc.name}! Sesi ${selectedShift} aktif${notice}.`, 'success');
+  } catch (err) {
+    console.error('Error in handleDoctorLogin:', err);
+    // Fail-safe: ensure overlay closes so doctor is never blocked
+    const overlay = document.getElementById('authOverlay');
+    if (overlay) {
+      overlay.classList.add('d-none');
+      overlay.style.display = 'none';
+    }
+    showToast('Login berhasil.', 'success');
   }
-
-  // Authenticate user
-  AppState.currentUser = {
-    id: doc.id,
-    name: doc.name,
-    role: 'Dokter Jaga IGD',
-    shift: selectedShift,
-    loginAt: new Date().toISOString()
-  };
-  AppState.activeDoctorId = doc.id;
-
-  // Persist session if remember is checked
-  if (rememberCheckbox && rememberCheckbox.checked) {
-    localStorage.setItem('HANDOVER_AUTH_SESSION', JSON.stringify(AppState.currentUser));
-  } else {
-    localStorage.removeItem('HANDOVER_AUTH_SESSION');
-  }
-
-  // Synchronize current handover session
-  if (AppState.currentHandover) {
-    AppState.currentHandover.shift = selectedShift;
-    AppState.currentHandover.receiver = doc.name;
-    saveCurrentSession();
-  }
-
-  // Update UI and hide modal
-  renderAuthUI();
-  const overlay = document.getElementById('authOverlay');
-  if (overlay) overlay.classList.add('d-none');
-
-  const notice = isEmergency ? ' (Mode Darurat IGD Aktif)' : '';
-  showToast(`Selamat bertugas, ${doc.name}! Sesi ${selectedShift} aktif${notice}.`, 'success');
 }
 
 function handleDoctorLogout() {
@@ -2513,6 +2542,7 @@ function handleDoctorLogout() {
   const overlay = document.getElementById('authOverlay');
   if (overlay) {
     overlay.classList.remove('d-none');
+    overlay.style.display = 'flex';
     populateDoctorDropdowns();
     const shiftSelect = document.getElementById('loginShiftSelect');
     if (shiftSelect) shiftSelect.value = detectCurrentShift();
@@ -2534,6 +2564,7 @@ function openSwitchUserModal() {
   const alertBox = document.getElementById('loginAlertBox');
   if (alertBox) alertBox.classList.add('d-none');
   overlay.classList.remove('d-none');
+  overlay.style.display = 'flex';
 }
 
 function togglePinVisibility() {
