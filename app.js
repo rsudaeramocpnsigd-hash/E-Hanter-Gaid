@@ -54,6 +54,7 @@ let AppState = {
   doctors: [],
   dpjps: [],
   currentHandover: null,
+  handoverHistory: [],
   patients: [],
   activeDoctorId: 'DOC-01',
   viewMode: 'cards', // 'cards' | 'table'
@@ -87,6 +88,9 @@ function loadFromStorage() {
 
   const savedDpjps = localStorage.getItem('HANDOVER_DPJPS');
   AppState.dpjps = savedDpjps ? JSON.parse(savedDpjps) : [...DEFAULT_DPJP];
+
+  const savedHistory = localStorage.getItem('HANDOVER_HISTORY_LOG');
+  AppState.handoverHistory = savedHistory ? JSON.parse(savedHistory) : getDefaultHandoverHistory();
 
   // Auto-reset patients to zero for clean production start
   const hasResetToZero = localStorage.getItem('HANDOVER_PATIENTS_CLEARED_ZERO_V3');
@@ -138,6 +142,7 @@ function saveToStorage() {
   localStorage.setItem('HANDOVER_DPJPS', JSON.stringify(AppState.dpjps));
   localStorage.setItem('HANDOVER_PATIENTS', JSON.stringify(AppState.patients));
   localStorage.setItem('HANDOVER_CURRENT_SESSION', JSON.stringify(AppState.currentHandover));
+  localStorage.setItem('HANDOVER_HISTORY_LOG', JSON.stringify(AppState.handoverHistory));
   localStorage.setItem('HANDOVER_SIGNATURES', JSON.stringify(AppState.signatures));
   localStorage.setItem('HANDOVER_GSHEET_CONFIG', JSON.stringify(AppState.gsheet));
 }
@@ -210,6 +215,8 @@ function renderAllViews() {
   renderTrackerView();
   renderPrintableReport();
   renderMasterDataTables();
+  renderLastShiftBanner();
+  renderHandoverHistory();
 }
 
 function populateDoctorDropdowns() {
@@ -762,6 +769,54 @@ function setupEventListeners() {
     startNewHandoverSession();
   });
 
+  // History and Shift Buttons
+  const btnStartDirect = document.getElementById('btnStartNewShiftDirect');
+  if (btnStartDirect) {
+    btnStartDirect.addEventListener('click', startNewHandoverSession);
+  }
+
+  const btnHistNewShift = document.getElementById('btnHistoryNewShift');
+  if (btnHistNewShift) {
+    btnHistNewShift.addEventListener('click', startNewHandoverSession);
+  }
+
+  // History filters
+  const histSearch = document.getElementById('historySearchInput');
+  if (histSearch) {
+    histSearch.addEventListener('input', renderHandoverHistory);
+  }
+
+  const histPeriod = document.getElementById('filterHistoryPeriod');
+  if (histPeriod) {
+    histPeriod.addEventListener('change', renderHandoverHistory);
+  }
+
+  const histShift = document.getElementById('filterHistoryShift');
+  if (histShift) {
+    histShift.addEventListener('change', renderHandoverHistory);
+  }
+
+  const btnResetHist = document.getElementById('btnResetHistoryFilters');
+  if (btnResetHist) {
+    btnResetHist.addEventListener('click', () => {
+      if (histSearch) histSearch.value = '';
+      if (histPeriod) histPeriod.value = 'ALL';
+      if (histShift) histShift.value = 'ALL';
+      renderHandoverHistory();
+    });
+  }
+
+  // Modal Detail Shift Close buttons
+  const btnCloseModal = document.getElementById('btnCloseModalShiftDetail');
+  if (btnCloseModal) {
+    btnCloseModal.addEventListener('click', closeShiftDetailModal);
+  }
+
+  const btnCloseModalBtm = document.getElementById('btnCloseShiftDetailBottom');
+  if (btnCloseModalBtm) {
+    btnCloseModalBtm.addEventListener('click', closeShiftDetailModal);
+  }
+
   // Dashboard shortcuts
   document.getElementById('btnRefreshDashboard').addEventListener('click', () => {
     renderAllViews();
@@ -1056,6 +1111,7 @@ function saveHandoverMasterForm() {
     id, date, time, shift, reporter, receiver, notes
   };
 
+  saveCurrentSessionToHistory();
   saveToStorage();
   renderAllViews();
   showToast('Informasi master sesi handover berhasil disimpan.', 'success');
@@ -1064,14 +1120,18 @@ function saveHandoverMasterForm() {
 function finalizeHandoverSession() {
   saveHandoverMasterForm();
   AppState.currentHandover.locked = true;
+  saveCurrentSessionToHistory();
   saveToStorage();
   renderAllViews();
-  showToast('Sesi Handover resmi difinalisasi dan siap dicetak!', 'success');
+  showToast('Sesi Handover resmi difinalisasi dan tersimpan di riwayat!', 'success');
   switchTab('tab-report');
 }
 
 function startNewHandoverSession() {
-  if (confirm('Mulai sesi handover shift baru? Sesi sebelumnya akan diarsipkan.')) {
+  if (confirm('Mulai sesi handover shift baru? Sesi shift saat ini akan otomatis diarsipkan ke riwayat.')) {
+    // Archive current session before starting new one
+    saveCurrentSessionToHistory();
+
     const newSession = createDefaultShiftSession();
     // Unique ID
     const randomSuffix = Math.floor(Math.random() * 90 + 10);
@@ -1745,3 +1805,474 @@ window.toggleDpjpStatus = toggleDpjpStatus;
 
 // Start the app on DOM ready
 document.addEventListener('DOMContentLoaded', initApp);
+
+// ==========================================================================
+// RIWAYAT & LOG SHIFT SEBELUMNYA (SHIFT HANDOVER HISTORY)
+// ==========================================================================
+
+function getDefaultHandoverHistory() {
+  return [
+    {
+      id: 'HO-20261028-03',
+      date: '2026-10-28',
+      time: '22:55',
+      shift: 'Shift Malam (20.00 - 08.00)',
+      reporter: 'dr. Dian',
+      receiver: 'dr. Camelia',
+      notes: 'Operan shift malam berjalan kondusif. Pasien Tn. Duplet (No. RM 91-35-50) telah diberikan terapi cito omeprazole dan cairan RL, observasi membaik menunggu kamar rawat inap.',
+      locked: true,
+      timestamp: '2026-10-28T22:55:00.000Z',
+      patientsSnapshot: [
+        {
+          id: 'PAT-H1',
+          handoverId: 'HO-20261028-03',
+          rm: '91-35-50',
+          name: 'Tn. Duplet',
+          age: '30 th',
+          triage: 'Kuning',
+          diagnosis: 'Dyspepsia Syndrome ec Suspek Gastritis Akut',
+          dpjp: 'dr. Erik, Sp.PD',
+          lab: 'Hb 13.8, Leu 9.200, Plt 240.000',
+          rad: 'Foto Thorax PA dalam batas normal',
+          condition: 'KU sedang, CM, TD 120/80, HR 84, RR 20, SpO2 98%',
+          pending: 'Terapi berjalan: Inf. RL 20 tpm, Inj. Omeprazole 40mg/12j, Inj. Ondansetron 4mg/8j. Menunggu kamar rawat inap.',
+          status: 'Rawat Inap',
+          spri: 'SPRI-2026/10/28'
+        }
+      ],
+      signatures: {
+        reporter: null,
+        receiver: null
+      }
+    },
+    {
+      id: 'HO-20261028-02',
+      date: '2026-10-28',
+      time: '14:05',
+      shift: 'Shift Siang (14.00 - 20.00)',
+      reporter: 'dr. Maria Monika',
+      receiver: 'dr. Dian',
+      notes: 'Shift siang terkendali. 2 pasien telah ditransfer ke bangsal Melati dan Bougenville setelah ACC DPJP.',
+      locked: true,
+      timestamp: '2026-10-28T14:05:00.000Z',
+      patientsSnapshot: [],
+      signatures: { reporter: null, receiver: null }
+    },
+    {
+      id: 'HO-20261028-01',
+      date: '2026-10-28',
+      time: '08:00',
+      shift: 'Shift Pagi (08.00 - 14.00)',
+      reporter: 'dr. Anskariani',
+      receiver: 'dr. Maria Monika',
+      notes: 'Serah terima pagi berjalan lancar. Tabung oksigen cadangan IGD telah diisi ulang lengkap.',
+      locked: true,
+      timestamp: '2026-10-28T08:00:00.000Z',
+      patientsSnapshot: [],
+      signatures: { reporter: null, receiver: null }
+    }
+  ];
+}
+
+function saveCurrentSessionToHistory() {
+  if (!AppState.currentHandover) return;
+  const current = AppState.currentHandover;
+  const currentPatients = AppState.patients.filter(p => p.handoverId === current.id);
+  
+  const existingIdx = AppState.handoverHistory.findIndex(h => h.id === current.id);
+  const historyItem = {
+    ...current,
+    patientsSnapshot: currentPatients.length > 0 ? [...currentPatients] : (existingIdx !== -1 ? AppState.handoverHistory[existingIdx].patientsSnapshot : []),
+    signatures: { ...AppState.signatures },
+    timestamp: new Date().toISOString()
+  };
+
+  if (existingIdx !== -1) {
+    AppState.handoverHistory[existingIdx] = historyItem;
+  } else {
+    AppState.handoverHistory.unshift(historyItem);
+  }
+
+  saveToStorage();
+}
+
+window.switchHandoverSubTab = function(subTab) {
+  const btnActive = document.getElementById('btnSubTabActive');
+  const btnHist = document.getElementById('btnSubTabHistory');
+  const containerActive = document.getElementById('containerActiveHandover');
+  const containerHist = document.getElementById('containerHistoryHandover');
+
+  if (subTab === 'history') {
+    if (btnActive) btnActive.classList.remove('active');
+    if (btnHist) btnHist.classList.add('active');
+    if (containerActive) containerActive.style.display = 'none';
+    if (containerHist) containerHist.style.display = 'block';
+    renderHandoverHistory();
+  } else {
+    if (btnHist) btnHist.classList.remove('active');
+    if (btnActive) btnActive.classList.add('active');
+    if (containerHist) containerHist.style.display = 'none';
+    if (containerActive) containerActive.style.display = 'block';
+    populateHandoverForm();
+  }
+};
+
+function renderLastShiftBanner() {
+  const banner = document.getElementById('lastShiftBanner');
+  const summaryText = document.getElementById('lastShiftSummaryText');
+  const badgeActiveShift = document.getElementById('badgeActiveShiftName');
+  const badgeHistCount = document.getElementById('badgeHistoryCount');
+
+  if (badgeActiveShift && AppState.currentHandover) {
+    const sName = AppState.currentHandover.shift || '';
+    badgeActiveShift.textContent = sName.includes('Pagi') ? 'Pagi' : sName.includes('Siang') ? 'Siang' : 'Malam';
+  }
+
+  if (badgeHistCount) {
+    badgeHistCount.textContent = `${AppState.handoverHistory.length} Riwayat`;
+  }
+
+  if (!banner || !summaryText) return;
+
+  const currentId = AppState.currentHandover ? AppState.currentHandover.id : '';
+  const pastShifts = AppState.handoverHistory.filter(h => h.id !== currentId);
+
+  if (pastShifts.length === 0) {
+    summaryText.innerHTML = '<em>Belum ada riwayat operan shift sebelumnya. Silakan simpan sesi untuk mencatat riwayat.</em>';
+    const btnView = document.getElementById('btnQuickViewLastShift');
+    if (btnView) btnView.style.display = 'none';
+    return;
+  }
+
+  const last = pastShifts[0];
+  const patientCount = last.patientsSnapshot ? last.patientsSnapshot.length : 0;
+  
+  summaryText.innerHTML = `
+    <span class="text-emerald font-bold">${last.shift}</span> (${formatDateIndo(last.date)}, ${last.time} WITA) • 
+    <strong>${escapeHtml(last.reporter)}</strong> ➔ <strong>${escapeHtml(last.receiver)}</strong> • 
+    <span class="badge ${patientCount > 0 ? 'badge-primary' : 'badge-neutral'} badge-xs">${patientCount} Pasien</span>
+  `;
+
+  const btnView = document.getElementById('btnQuickViewLastShift');
+  if (btnView) {
+    btnView.style.display = 'inline-flex';
+    btnView.onclick = () => openShiftDetailModal(last.id);
+  }
+}
+
+function renderHandoverHistory() {
+  const tbody = document.getElementById('historyTableBody');
+  if (!tbody) return;
+
+  const search = (document.getElementById('historySearchInput')?.value || '').toLowerCase().trim();
+  const period = document.getElementById('filterHistoryPeriod')?.value || 'ALL';
+  const shiftFilter = document.getElementById('filterHistoryShift')?.value || 'ALL';
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const sevenDaysStr = sevenDaysAgo.toISOString().split('T')[0];
+
+  let list = AppState.handoverHistory.filter(h => {
+    // Period filter
+    if (period === 'TODAY' && h.date !== todayStr) return false;
+    if (period === 'YESTERDAY' && h.date !== yesterdayStr) return false;
+    if (period === '7DAYS' && h.date < sevenDaysStr) return false;
+
+    // Shift filter
+    if (shiftFilter !== 'ALL' && h.shift !== shiftFilter) return false;
+
+    // Search filter
+    if (search) {
+      const matchId = (h.id || '').toLowerCase().includes(search);
+      const matchRep = (h.reporter || '').toLowerCase().includes(search);
+      const matchRec = (h.receiver || '').toLowerCase().includes(search);
+      const matchNotes = (h.notes || '').toLowerCase().includes(search);
+      if (!matchId && !matchRep && !matchRec && !matchNotes) return false;
+    }
+    return true;
+  });
+
+  if (list.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center py-8 text-muted">
+          <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
+          Tidak ada riwayat handover shift yang sesuai dengan filter pencarian.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = list.map((h) => {
+    const shiftBadgeClass = h.shift.includes('Pagi') 
+      ? 'badge-shift-pagi' 
+      : h.shift.includes('Siang') 
+      ? 'badge-shift-siang' 
+      : 'badge-shift-malam';
+
+    let pts = h.patientsSnapshot || [];
+    if (pts.length === 0 && AppState.patients) {
+      pts = AppState.patients.filter(p => p.handoverId === h.id);
+    }
+    const countRed = pts.filter(p => p.triage === 'Merah').length;
+    const countYellow = pts.filter(p => p.triage === 'Kuning').length;
+    const countGreen = pts.filter(p => p.triage === 'Hijau').length;
+
+    const isCurrentActive = AppState.currentHandover && AppState.currentHandover.id === h.id;
+
+    return `
+      <tr class="${isCurrentActive ? 'bg-emerald-50' : ''}">
+        <td>
+          <strong class="block text-slate-800">${formatDateIndo(h.date)}</strong>
+          <span class="text-xs text-muted font-mono"><i class="fa-regular fa-clock"></i> ${h.time} WITA</span>
+          ${isCurrentActive ? '<span class="badge badge-success badge-xs block mt-1">Shift Aktif</span>' : ''}
+        </td>
+        <td>
+          <span class="badge ${shiftBadgeClass}">${h.shift}</span>
+          <span class="text-xs text-muted block font-mono mt-1">${h.id}</span>
+        </td>
+        <td>
+          <div class="text-xs leading-relaxed">
+            <span class="text-muted">Pelapor:</span> <strong class="text-emerald">${escapeHtml(h.reporter)}</strong><br>
+            <span class="text-muted">Penerima:</span> <strong class="text-blue">${escapeHtml(h.receiver)}</strong>
+          </div>
+        </td>
+        <td class="text-center">
+          <strong class="text-base text-slate-800">${pts.length}</strong> <span class="text-xs text-muted">Pasien</span>
+          ${pts.length > 0 ? `
+            <div class="flex justify-center gap-1 mt-1">
+              ${countRed > 0 ? `<span class="badge badge-danger badge-xs" title="${countRed} Triase Merah">${countRed} P1</span>` : ''}
+              ${countYellow > 0 ? `<span class="badge badge-warning badge-xs" title="${countYellow} Triase Kuning">${countYellow} P2</span>` : ''}
+              ${countGreen > 0 ? `<span class="badge badge-success badge-xs" title="${countGreen} Triase Hijau">${countGreen} P3</span>` : ''}
+            </div>
+          ` : ''}
+        </td>
+        <td>
+          <p class="text-xs text-slate-600 line-clamp-2" title="${escapeHtml(h.notes || '-')}">
+            ${escapeHtml(h.notes || 'Operan shift selesai dan tercatat.')}
+          </p>
+        </td>
+        <td class="text-center">
+          <div class="flex justify-center items-center gap-1">
+            <button type="button" class="btn btn-outline btn-xs" onclick="openShiftDetailModal('${h.id}')" title="Lihat Rincian Pasien & Terapi">
+              <i class="fa-solid fa-eye text-emerald"></i> Detail
+            </button>
+            <button type="button" class="btn btn-secondary btn-xs" onclick="printSpecificHandover('${h.id}')" title="Cetak Laporan PDF Shift Ini">
+              <i class="fa-solid fa-print"></i> PDF
+            </button>
+            ${!isCurrentActive ? `
+              <button type="button" class="btn btn-primary btn-xs" onclick="loadSessionAsActive('${h.id}')" title="Buka dan Jadikan Shift Aktif di Form">
+                <i class="fa-solid fa-file-import"></i>
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+window.openShiftDetailModal = function(handoverId) {
+  let session = AppState.handoverHistory.find(h => h.id === handoverId);
+  if (!session && AppState.currentHandover && AppState.currentHandover.id === handoverId) {
+    session = AppState.currentHandover;
+  }
+  if (!session) {
+    showToast('Data riwayat shift tidak ditemukan.', 'warning');
+    return;
+  }
+
+  // Populate Header Info
+  document.getElementById('detailShiftId').textContent = session.id;
+  document.getElementById('detailShiftDate').textContent = formatDateIndo(session.date);
+  document.getElementById('detailShiftTime').textContent = `${session.shift} (${session.time} WITA)`;
+  document.getElementById('detailShiftStatus').textContent = session.locked ? 'Terverifikasi (Resmi)' : 'Sesi Aktif';
+  document.getElementById('detailShiftReporter').textContent = session.reporter;
+  document.getElementById('detailShiftReceiver').textContent = session.receiver;
+  document.getElementById('detailShiftNotes').textContent = session.notes || 'Tidak ada catatan khusus.';
+
+  // Patients of this shift
+  let pts = session.patientsSnapshot;
+  if (!pts || pts.length === 0) {
+    pts = AppState.patients.filter(p => p.handoverId === session.id);
+  }
+
+  document.getElementById('detailPatientCountBadge').textContent = `${pts.length} Pasien`;
+  document.getElementById('detailCountRed').textContent = pts.filter(p => p.triage === 'Merah').length;
+  document.getElementById('detailCountYellow').textContent = pts.filter(p => p.triage === 'Kuning').length;
+  document.getElementById('detailCountGreen').textContent = pts.filter(p => p.triage === 'Hijau').length;
+  document.getElementById('detailCountRanap').textContent = pts.filter(p => p.status === 'Rawat Inap').length;
+  document.getElementById('detailCountObs').textContent = pts.filter(p => p.status === 'Observasi').length;
+
+  const tbody = document.getElementById('detailShiftPatientsBody');
+  if (pts.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-6 text-muted">
+          <em>Tidak ada pasien kelolaan dalam daftar operan shift ini.</em>
+        </td>
+      </tr>
+    `;
+  } else {
+    tbody.innerHTML = pts.map((p, idx) => {
+      const trgClass = p.triage === 'Merah' ? 'triage-merah' : p.triage === 'Kuning' ? 'triage-kuning' : 'triage-hijau';
+      const trgLabel = p.triage === 'Merah' ? 'P1 - Merah' : p.triage === 'Kuning' ? 'P2 - Kuning' : 'P3 - Hijau';
+      return `
+        <tr>
+          <td class="text-center font-bold">${idx + 1}</td>
+          <td class="text-center">
+            <span class="badge-triage-print ${trgClass}">${trgLabel}</span>
+          </td>
+          <td>
+            <strong class="text-slate-900">${escapeHtml(p.name)}</strong><br>
+            <span class="text-xs font-mono text-muted">RM: ${p.rm} • ${escapeHtml(p.age)}</span>
+          </td>
+          <td><strong class="text-slate-800">${escapeHtml(p.diagnosis)}</strong></td>
+          <td><span class="text-xs font-bold text-slate-700">${escapeHtml(p.dpjp || '-')}</span></td>
+          <td>
+            <div class="text-xs leading-tight">
+              <strong>Lab:</strong> ${escapeHtml(p.lab || '-')}<br>
+              <strong>Rad:</strong> ${escapeHtml(p.rad || '-')}
+            </div>
+          </td>
+          <td>
+            <div class="text-xs leading-tight">
+              <strong>TTV:</strong> ${escapeHtml(p.condition)}<br>
+              <strong class="text-amber-800">Pending:</strong> ${escapeHtml(p.pending)}
+            </div>
+          </td>
+          <td>
+            <span class="badge ${p.status === 'Rawat Inap' ? 'badge-primary' : p.status === 'Observasi' ? 'badge-neutral' : 'badge-success'} badge-xs">
+              ${p.status}
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Signatures
+  document.getElementById('detailSigReporterName').textContent = session.reporter;
+  document.getElementById('detailSigReceiverName').textContent = session.receiver;
+  const boxRep = document.getElementById('detailSigReporterBox');
+  const boxRec = document.getElementById('detailSigReceiverBox');
+
+  if (session.signatures && session.signatures.reporter) {
+    boxRep.innerHTML = `<img src="${session.signatures.reporter}" alt="TTD">`;
+  } else {
+    boxRep.innerHTML = `<span class="sig-placeholder text-muted">(Tanda Tangan Digital)</span>`;
+  }
+
+  if (session.signatures && session.signatures.receiver) {
+    boxRec.innerHTML = `<img src="${session.signatures.receiver}" alt="TTD">`;
+  } else {
+    boxRec.innerHTML = `<span class="sig-placeholder text-muted">(Tanda Tangan Digital)</span>`;
+  }
+
+  // Action buttons on modal
+  document.getElementById('btnPrintThisShiftReport').onclick = () => {
+    printSpecificHandover(session.id);
+  };
+
+  document.getElementById('btnAdoptActivePatients').onclick = () => {
+    transferPatientsToCurrentShift(session.id);
+  };
+
+  document.getElementById('modalShiftDetail').classList.add('show');
+};
+
+window.closeShiftDetailModal = function() {
+  const modal = document.getElementById('modalShiftDetail');
+  if (modal) modal.classList.remove('show');
+};
+
+window.transferPatientsToCurrentShift = function(sourceHandoverId) {
+  let session = AppState.handoverHistory.find(h => h.id === sourceHandoverId);
+  if (!session) return;
+
+  const currentHandoverId = AppState.currentHandover ? AppState.currentHandover.id : '';
+  if (!currentHandoverId || currentHandoverId === sourceHandoverId) {
+    showToast('Sesi ini sudah merupakan shift aktif Anda.', 'info');
+    return;
+  }
+
+  let sourcePatients = session.patientsSnapshot || [];
+  if (sourcePatients.length === 0) {
+    sourcePatients = AppState.patients.filter(p => p.handoverId === sourceHandoverId);
+  }
+
+  // Filter only active patients (Observasi or Rawat Inap)
+  const activePatients = sourcePatients.filter(p => p.status === 'Observasi' || p.status === 'Rawat Inap');
+
+  if (activePatients.length === 0) {
+    showToast('Tidak ada pasien aktif (Observasi/Rawat Inap) pada shift tersebut untuk dioperkan.', 'warning');
+    return;
+  }
+
+  // Adopt into current shift
+  let addedCount = 0;
+  activePatients.forEach(p => {
+    const isAlreadyThere = AppState.patients.some(existing => existing.handoverId === currentHandoverId && existing.rm === p.rm);
+    if (!isAlreadyThere) {
+      const newP = {
+        ...p,
+        id: `PAT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        handoverId: currentHandoverId
+      };
+      AppState.patients.push(newP);
+      addedCount++;
+    }
+  });
+
+  saveToStorage();
+  renderAllViews();
+  closeShiftDetailModal();
+  switchHandoverSubTab('active');
+  showToast(`${addedCount} pasien aktif berhasil dioperkan ke shift baru Anda!`, 'success');
+};
+
+window.loadSessionAsActive = function(handoverId) {
+  const session = AppState.handoverHistory.find(h => h.id === handoverId);
+  if (!session) return;
+
+  if (confirm(`Jadikan sesi ${session.shift} (${session.id}) sebagai shift aktif di form?`)) {
+    AppState.currentHandover = { ...session };
+    saveToStorage();
+    renderAllViews();
+    switchHandoverSubTab('active');
+    showToast(`Sesi ${session.id} sekarang aktif di formulir.`, 'info');
+  }
+};
+
+window.printSpecificHandover = function(handoverId) {
+  let session = AppState.handoverHistory.find(h => h.id === handoverId);
+  if (!session && AppState.currentHandover && AppState.currentHandover.id === handoverId) {
+    session = AppState.currentHandover;
+  }
+  if (!session) return;
+
+  const previousCurrent = AppState.currentHandover;
+  AppState.currentHandover = session;
+  
+  if (session.patientsSnapshot && session.patientsSnapshot.length > 0) {
+    session.patientsSnapshot.forEach(sp => {
+      if (!AppState.patients.some(p => p.id === sp.id)) {
+        AppState.patients.push(sp);
+      }
+    });
+  }
+
+  renderPrintableReport();
+  switchTab('tab-report');
+  
+  setTimeout(() => {
+    window.print();
+    AppState.currentHandover = previousCurrent;
+  }, 300);
+};
