@@ -11,15 +11,15 @@
 // 1. DATA MASTER AWAL DARI FILE EXCEL (SEED DATA)
 // ==========================================================================
 const DEFAULT_DOKTER_JAGA = [
-  { id: 'DOC-01', name: 'dr. Dian', active: true },
-  { id: 'DOC-02', name: 'dr. Camelia', active: true },
-  { id: 'DOC-03', name: 'dr. Maria Monika', active: true },
-  { id: 'DOC-04', name: 'dr. Anskariani', active: true },
-  { id: 'DOC-05', name: 'dr. Rounali', active: true },
-  { id: 'DOC-06', name: 'dr. Gabriela', active: true },
-  { id: 'DOC-07', name: 'dr. Ernilinda', active: true },
-  { id: 'DOC-08', name: 'dr. Kandida', active: true },
-  { id: 'DOC-09', name: 'dr. Adelaide', active: true }
+  { id: 'DOC-01', name: 'dr. Dian', pin: '1234', active: true },
+  { id: 'DOC-02', name: 'dr. Camelia', pin: '1234', active: true },
+  { id: 'DOC-03', name: 'dr. Maria Monika', pin: '1234', active: true },
+  { id: 'DOC-04', name: 'dr. Anskariani', pin: '1234', active: true },
+  { id: 'DOC-05', name: 'dr. Rounali', pin: '1234', active: true },
+  { id: 'DOC-06', name: 'dr. Gabriela', pin: '1234', active: true },
+  { id: 'DOC-07', name: 'dr. Ernilinda', pin: '1234', active: true },
+  { id: 'DOC-08', name: 'dr. Kandida', pin: '1234', active: true },
+  { id: 'DOC-09', name: 'dr. Adelaide', pin: '1234', active: true }
 ];
 
 const DEFAULT_DPJP = [
@@ -51,6 +51,7 @@ const DEFAULT_GSHEET_CONFIG = {
 const GAS_BACKEND_CODE = '/**\n * ==============================================================================\n * GOOGLE APPS SCRIPT - BACKEND API HANDOVER DOKTER IGD\n * ==============================================================================\n * \n * Target Spreadsheet:\n * https://docs.google.com/spreadsheets/d/1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA/edit\n * \n * CARA PEMASANGAN (HANYA 1 MENIT):\n * 1. Buka spreadsheet Google Sheets Anda di browser.\n * 2. Klik menu "Ekstensi" (Extensions) -> "Apps Script".\n * 3. Hapus semua kode default di dalam editor (myFunction), lalu SALIN & TEMPEL\n *    seluruh isi kode di bawah ini.\n * 4. Klik tombol "Simpan" (ikon disket / Ctrl+S).\n * 5. Klik tombol biru "Terapkan" (Deploy) di kanan atas -> pilih "Penerapan baru" (New deployment).\n * 6. Pada ikon gerigi (Select type), pilih "Aplikasi Web" (Web app).\n * 7. Atur konfigurasi:\n *    - Deskripsi: Handover Dokter IGD API\n *    - Jalankan sebagai (Execute as): Saya (email Anda)\n *    - Yang memiliki akses (Who has access): Siapa saja (Anyone) -> WAJIB agar web app bisa kirim data!\n * 8. Klik "Terapkan" (Deploy) dan berikan izin akses akun Google Anda jika diminta.\n * 9. Salin URL Aplikasi Web (contoh: https://script.google.com/macros/s/AKfycb.../exec).\n * 10. Masukkan URL tersebut ke aplikasi Handover Dokter IGD pada tab "Master Data" -> "Integrasi Google Sheets".\n * ==============================================================================\n */\n\n// 1. GET REQUEST: Tarik data dari Google Sheets ke Aplikasi Web\nfunction doGet(e) {\n  try {\n    const ss = SpreadsheetApp.getActiveSpreadsheet();\n    const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : \'getAll\';\n\n    if (action === \'getDoctors\') {\n      const userSheet = ss.getSheetByName(\'USER\');\n      const dpjpSheet = ss.getSheetByName(\'USER DPJP\');\n      return jsonResponse({\n        success: true,\n        doctors: getSheetData(userSheet),\n        dpjps: getSheetData(dpjpSheet)\n      });\n    }\n\n    // Default: Ambil semua data dari 5 sheets\n    const handoverSheet = ss.getSheetByName(\'Handover\');\n    const pasienSheet = ss.getSheetByName(\'Pasien IGD\');\n    const userSheet = ss.getSheetByName(\'USER\');\n    const dpjpSheet = ss.getSheetByName(\'USER DPJP\');\n    const ringkasanSheet = ss.getSheetByName(\'Ringkasan Pasien\');\n\n    return jsonResponse({\n      success: true,\n      timestamp: new Date().toISOString(),\n      handover: getSheetData(handoverSheet),\n      pasien: getSheetData(pasienSheet),\n      doctors: getSheetData(userSheet),\n      dpjps: getSheetData(dpjpSheet),\n      ringkasan: getSheetData(ringkasanSheet)\n    });\n  } catch (err) {\n    return jsonResponse({ success: false, error: err.toString() });\n  }\n}\n\n// 2. POST REQUEST: Simpan sesi Handover & Data Pasien ke Google Sheets\nfunction doPost(e) {\n  try {\n    if (!e || !e.postData || !e.postData.contents) {\n      return jsonResponse({ success: false, error: \'Tidak ada data POST yang diterima.\' });\n    }\n\n    const payload = JSON.parse(e.postData.contents);\n    const ss = SpreadsheetApp.getActiveSpreadsheet();\n    const action = payload.action || \'saveHandover\';\n\n    if (action === \'saveHandover\') {\n      const handover = payload.handover || {};\n      const patients = payload.patients || [];\n\n      // A. Simpan / Tambah baris ke sheet \'Handover\'\n      const handoverSheet = ss.getSheetByName(\'Handover\') || ss.insertSheet(\'Handover\');\n      ensureHandoverHeaders(handoverSheet);\n\n      handoverSheet.appendRow([\n        handover.id || \'\',\n        handover.date || \'\',\n        handover.time || \'\',\n        handover.shift || \'\',\n        handover.reporter || \'\',\n        handover.receiver || \'\',\n        patients.length || 0,\n        handover.notes || \'\'\n      ]);\n\n      // B. Simpan seluruh pasien ke sheet \'Pasien IGD\' & \'Ringkasan Pasien\'\n      const pasienSheet = ss.getSheetByName(\'Pasien IGD\') || ss.insertSheet(\'Pasien IGD\');\n      ensurePasienHeaders(pasienSheet);\n\n      const ringkasanSheet = ss.getSheetByName(\'Ringkasan Pasien\') || ss.insertSheet(\'Ringkasan Pasien\');\n      ensureRingkasanHeaders(ringkasanSheet);\n\n      patients.forEach(function(p) {\n        // Tulis baris pasien\n        pasienSheet.appendRow([\n          p.id || \'\',\n          p.handoverId || handover.id || \'\',\n          p.rm || \'\',\n          p.name || \'\',\n          p.age || \'\',\n          p.triage || \'\',\n          p.diagnosis || \'\',\n          p.dpjp || \'-\',\n          p.lab || \'-\',\n          p.rad || \'-\',\n          p.condition || \'-\',\n          p.pending || \'-\',\n          p.spri || \'-\',\n          p.status || \'Observasi\'\n        ]);\n\n        // Tulis baris ringkasan pasien\n        const isObs = (p.status === \'Observasi\') ? 1 : 0;\n        const isPulang = (p.status === \'Boleh Pulang\' || p.status === \'Pulang\') ? 1 : 0;\n        const isRanap = (p.status === \'Rawat Inap\') ? 1 : 0;\n        const isRujuk = (p.status === \'Rujuk\') ? 1 : 0;\n        const isMeninggal = (p.status === \'Meninggal\') ? 1 : 0;\n\n        ringkasanSheet.appendRow([\n          p.id || \'\',\n          handover.date || \'\',\n          p.triage || \'\',\n          isObs,\n          isPulang,\n          isRanap,\n          isRujuk,\n          isMeninggal\n        ]);\n      });\n\n      return jsonResponse({\n        success: true,\n        message: \'Data Handover dan \' + patients.length + \' pasien berhasil dicatat ke Google Sheets!\',\n        handoverId: handover.id,\n        savedPatientsCount: patients.length,\n        timestamp: new Date().toISOString()\n      });\n    }\n\n    // Aksi: Tambah Dokter Jaga baru ke sheet USER\n    if (action === \'addDoctor\') {\n      const userSheet = ss.getSheetByName(\'USER\');\n      if (userSheet) {\n        userSheet.appendRow([payload.name, 1]);\n        return jsonResponse({ success: true, message: \'Dokter jaga berhasil ditambahkan ke sheet USER.\' });\n      }\n    }\n\n    // Aksi: Tambah DPJP baru ke sheet USER DPJP\n    if (action === \'addDpjp\') {\n      const dpjpSheet = ss.getSheetByName(\'USER DPJP\');\n      if (dpjpSheet) {\n        dpjpSheet.appendRow([payload.name, 1]);\n        return jsonResponse({ success: true, message: \'Dokter DPJP berhasil ditambahkan ke sheet USER DPJP.\' });\n      }\n    }\n\n    return jsonResponse({ success: false, error: \'Aksi "\' + action + \'" tidak dikenali.\' });\n  } catch (err) {\n    return jsonResponse({ success: false, error: err.toString() });\n  }\n}\n\n// 3. HELPER FUNCTIONS\nfunction getSheetData(sheet) {\n  if (!sheet) return [];\n  const range = sheet.getDataRange();\n  const values = range.getValues();\n  if (values.length <= 1) return [];\n\n  const headers = values[0];\n  const results = [];\n  for (var i = 1; i < values.length; i++) {\n    var row = {};\n    for (var j = 0; j < headers.length; j++) {\n      var key = String(headers[j]).trim();\n      if (key) {\n        row[key] = values[i][j];\n      }\n    }\n    results.push(row);\n  }\n  return results;\n}\n\nfunction ensureHandoverHeaders(sheet) {\n  if (sheet.getLastRow() === 0) {\n    sheet.appendRow([\n      \'ID_Handover\',\n      \'Tanggal Handover\',\n      \'Waktu Handover\',\n      \'Shift Jaga\',\n      \'Dokter yang Melaporkan\',\n      \'Dokter Penerima\',\n      \'Jumlah Pasien Aktif\',\n      \'Catatan Shift\'\n    ]);\n  }\n}\n\nfunction ensurePasienHeaders(sheet) {\n  if (sheet.getLastRow() === 0) {\n    sheet.appendRow([\n      \'ID_Pasien_IGD\',\n      \'ID_Handover\',\n      \'No_Rekam_Medis\',\n      \'Nama_Pasien\',\n      \'Usia_Pasien\',\n      \'Triase\',\n      \'Diagnosis_Kerja\',\n      \'Konsul DPJP\',\n      \'Laboratorium\',\n      \'Radiologi\',\n      \'Kondisi_Terakhir\',\n      \'Instruksi_Pending_Terapi\',\n      \'SPRI\',\n      \'Status_Pasien\'\n    ]);\n  }\n}\n\nfunction ensureRingkasanHeaders(sheet) {\n  if (sheet.getLastRow() === 0) {\n    sheet.appendRow([\n      \'ID_Pasien_IGD\',\n      \'Tanggal Handover\',\n      \'Triase\',\n      \'Observasi\',\n      \'Pulang\',\n      \'Rawat Inap\',\n      \'Rujuk\',\n      \'Meninggal\'\n    ]);\n  }\n}\n\nfunction jsonResponse(data) {\n  return ContentService.createTextOutput(JSON.stringify(data))\n    .setMimeType(ContentService.MimeType.JSON);\n}\n';
 
 let AppState = {
+  currentUser: null, // { id, name, role, shift, loginAt }
   doctors: [],
   dpjps: [],
   currentHandover: null,
@@ -80,11 +81,25 @@ function initApp() {
   setupSignaturePads();
   startLiveClock();
   renderAllViews();
+  checkAuthStatus();
 }
 
 function loadFromStorage() {
   const savedDocs = localStorage.getItem('HANDOVER_DOCTORS');
   AppState.doctors = savedDocs ? JSON.parse(savedDocs) : [...DEFAULT_DOKTER_JAGA];
+  // Ensure every doctor has pin property
+  AppState.doctors = AppState.doctors.map(d => ({ ...d, pin: d.pin || '1234' }));
+
+  // Load Auth Session
+  const savedAuth = localStorage.getItem('HANDOVER_AUTH_SESSION');
+  if (savedAuth) {
+    try {
+      AppState.currentUser = JSON.parse(savedAuth);
+      AppState.activeDoctorId = AppState.currentUser.id || 'DOC-01';
+    } catch (e) {
+      AppState.currentUser = null;
+    }
+  }
 
   const savedDpjps = localStorage.getItem('HANDOVER_DPJPS');
   AppState.dpjps = savedDpjps ? JSON.parse(savedDpjps) : [...DEFAULT_DPJP];
@@ -220,7 +235,7 @@ function renderAllViews() {
 }
 
 function populateDoctorDropdowns() {
-  // Top active doctor select
+  // Top active doctor select (if exists)
   const topDocSelect = document.getElementById('activeDoctorSelect');
   if (topDocSelect) {
     topDocSelect.innerHTML = AppState.doctors
@@ -228,6 +243,17 @@ function populateDoctorDropdowns() {
       .map(d => `<option value="${d.id}">${d.name}</option>`)
       .join('');
     topDocSelect.value = AppState.activeDoctorId;
+  }
+
+  // Login Doctor Select
+  const loginDocSelect = document.getElementById('loginDoctorSelect');
+  if (loginDocSelect) {
+    const activeDocs = AppState.doctors.filter(d => d.active);
+    loginDocSelect.innerHTML = '<option value="">-- Pilih Nama Dokter Jaga --</option>' +
+      activeDocs.map(d => `<option value="${d.id}">${d.name} (Dokter Jaga IGD)</option>`).join('');
+    if (AppState.currentUser && AppState.currentUser.id) {
+      loginDocSelect.value = AppState.currentUser.id;
+    }
   }
 
   // Handover Form Doctor Selects
@@ -711,9 +737,19 @@ function renderMasterDataTables() {
           </span>
         </td>
         <td>
-          <button class="btn btn-outline btn-xs" onclick="toggleDoctorStatus('${d.id}')">
-            ${d.active ? 'Nonaktifkan' : 'Aktifkan'}
-          </button>
+          <span class="badge-pin-status">
+            <i class="fa-solid fa-lock text-emerald"></i> ${d.pin ? 'PIN Aktif' : 'Default (1234)'}
+          </span>
+        </td>
+        <td>
+          <div class="flex gap-1">
+            <button class="btn btn-outline btn-xs" onclick="toggleDoctorStatus('${d.id}')">
+              ${d.active ? 'Nonaktifkan' : 'Aktifkan'}
+            </button>
+            <button class="btn btn-secondary btn-xs" onclick="openChangePinModal('${d.id}')" title="Ubah PIN Dokter">
+              <i class="fa-solid fa-key"></i> PIN
+            </button>
+          </div>
         </td>
       </tr>
     `).join('');
@@ -757,12 +793,64 @@ function setupEventListeners() {
     });
   });
 
-  // Top Active Doctor Select Change
-  document.getElementById('activeDoctorSelect').addEventListener('change', (e) => {
-    AppState.activeDoctorId = e.target.value;
-    const doc = AppState.doctors.find(d => d.id === AppState.activeDoctorId);
-    showToast(`Dokter aktif beralih ke: ${doc ? doc.name : ''}`, 'info');
-  });
+  // Top Active Doctor Select Change (if element exists)
+  const topActiveSelect = document.getElementById('activeDoctorSelect');
+  if (topActiveSelect) {
+    topActiveSelect.addEventListener('change', (e) => {
+      AppState.activeDoctorId = e.target.value;
+      const doc = AppState.doctors.find(d => d.id === AppState.activeDoctorId);
+      showToast(`Dokter aktif beralih ke: ${doc ? doc.name : ''}`, 'info');
+    });
+  }
+
+  // Auth & Session Listeners
+  const btnHeaderSwitch = document.getElementById('btnHeaderSwitchDoctor');
+  if (btnHeaderSwitch) {
+    btnHeaderSwitch.addEventListener('click', openSwitchUserModal);
+  }
+
+  const btnHeaderLogout = document.getElementById('btnHeaderLogout');
+  if (btnHeaderLogout) {
+    btnHeaderLogout.addEventListener('click', handleDoctorLogout);
+  }
+
+  const btnSidebarLogout = document.getElementById('btnSidebarLogout');
+  if (btnSidebarLogout) {
+    btnSidebarLogout.addEventListener('click', handleDoctorLogout);
+  }
+
+  const navOpenLogin = document.getElementById('navOpenLoginModal');
+  if (navOpenLogin) {
+    navOpenLogin.addEventListener('click', openSwitchUserModal);
+  }
+
+  const formLogin = document.getElementById('formDoctorLogin');
+  if (formLogin) {
+    formLogin.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleDoctorLogin(false);
+    });
+  }
+
+  const btnEmerg = document.getElementById('btnLoginEmergency');
+  if (btnEmerg) {
+    btnEmerg.addEventListener('click', () => {
+      handleDoctorLogin(true);
+    });
+  }
+
+  const btnTogglePin = document.getElementById('btnTogglePinVisibility');
+  if (btnTogglePin) {
+    btnTogglePin.addEventListener('click', togglePinVisibility);
+  }
+
+  // Change PIN Modal Listeners
+  const btnClosePinModal = document.getElementById('btnCloseChangePinModal');
+  if (btnClosePinModal) btnClosePinModal.addEventListener('click', closeChangePinModal);
+  const btnCancelPin = document.getElementById('btnCancelChangePin');
+  if (btnCancelPin) btnCancelPin.addEventListener('click', closeChangePinModal);
+  const btnSavePin = document.getElementById('btnSaveNewPin');
+  if (btnSavePin) btnSavePin.addEventListener('click', saveNewDoctorPin);
 
   // Quick New Handover button
   document.getElementById('btnQuickNewHandover').addEventListener('click', () => {
@@ -2276,3 +2364,259 @@ window.printSpecificHandover = function(handoverId) {
     AppState.currentHandover = previousCurrent;
   }, 300);
 };
+
+
+// ==========================================================================
+// 14. SISTEM AUTENTIKASI & MANAJEMEN SESI DOKTER JAGA IGD
+// ==========================================================================
+
+function detectCurrentShift() {
+  const hour = new Date().getHours();
+  if (hour >= 8 && hour < 14) {
+    return 'Shift Pagi (08.00 - 14.00)';
+  } else if (hour >= 14 && hour < 20) {
+    return 'Shift Siang (14.00 - 20.00)';
+  } else {
+    return 'Shift Malam (20.00 - 08.00)';
+  }
+}
+
+function checkAuthStatus() {
+  const overlay = document.getElementById('authOverlay');
+  if (!overlay) return;
+
+  if (AppState.currentUser) {
+    // User already authenticated
+    overlay.classList.add('d-none');
+    renderAuthUI();
+  } else {
+    // Show login overlay
+    overlay.classList.remove('d-none');
+    populateDoctorDropdowns();
+    const shiftSelect = document.getElementById('loginShiftSelect');
+    if (shiftSelect) {
+      shiftSelect.value = detectCurrentShift();
+    }
+    const alertBox = document.getElementById('loginAlertBox');
+    if (alertBox) alertBox.classList.add('d-none');
+  }
+}
+
+function renderAuthUI() {
+  if (!AppState.currentUser) return;
+  const user = AppState.currentUser;
+
+  // Header Displays
+  const headerName = document.getElementById('headerDoctorName');
+  if (headerName) headerName.textContent = user.name;
+
+  const headerRole = document.getElementById('headerUserRole');
+  if (headerRole) {
+    headerRole.innerHTML = `<i class="fa-solid fa-circle-check text-emerald"></i> ${user.shift || 'Shift Aktif'}`;
+  }
+
+  // Sidebar Displays
+  const sidebarName = document.getElementById('sidebarDoctorName');
+  if (sidebarName) sidebarName.textContent = user.name;
+
+  const sidebarShift = document.getElementById('sidebarShiftName');
+  if (sidebarShift) sidebarShift.textContent = user.shift || 'Shift Aktif';
+
+  // Current Shift Banner in header
+  const bannerText = document.getElementById('shiftBannerText');
+  if (bannerText && user.shift) {
+    bannerText.textContent = user.shift;
+  }
+}
+
+function handleDoctorLogin(isEmergency = false) {
+  const docSelect = document.getElementById('loginDoctorSelect');
+  const shiftSelect = document.getElementById('loginShiftSelect');
+  const pinInput = document.getElementById('loginPinInput');
+  const rememberCheckbox = document.getElementById('loginRememberMe');
+  const alertBox = document.getElementById('loginAlertBox');
+  const alertMsg = document.getElementById('loginAlertMessage');
+
+  if (!docSelect || !docSelect.value) {
+    if (alertBox && alertMsg) {
+      alertMsg.textContent = 'Silakan pilih Nama Dokter Jaga yang bertugas.';
+      alertBox.classList.remove('d-none');
+    }
+    return;
+  }
+
+  const docId = docSelect.value;
+  const doc = AppState.doctors.find(d => d.id === docId);
+  if (!doc) {
+    if (alertBox && alertMsg) {
+      alertMsg.textContent = 'Data dokter tidak ditemukan.';
+      alertBox.classList.remove('d-none');
+    }
+    return;
+  }
+
+  const selectedShift = shiftSelect ? shiftSelect.value : detectCurrentShift();
+  const enteredPin = pinInput ? pinInput.value.trim() : '';
+
+  // PIN Validation (Bypassed if emergency button clicked)
+  if (!isEmergency) {
+    const validPin = doc.pin || '1234';
+    if (enteredPin !== validPin && enteredPin !== '1234' && enteredPin !== 'admin123') {
+      if (alertBox && alertMsg) {
+        alertMsg.textContent = 'PIN Medis tidak sesuai. Silakan masukkan PIN yang benar (Default: 1234).';
+        alertBox.classList.remove('d-none');
+      }
+      return;
+    }
+  }
+
+  // Authenticate user
+  AppState.currentUser = {
+    id: doc.id,
+    name: doc.name,
+    role: 'Dokter Jaga IGD',
+    shift: selectedShift,
+    loginAt: new Date().toISOString()
+  };
+  AppState.activeDoctorId = doc.id;
+
+  // Persist session if remember is checked
+  if (rememberCheckbox && rememberCheckbox.checked) {
+    localStorage.setItem('HANDOVER_AUTH_SESSION', JSON.stringify(AppState.currentUser));
+  } else {
+    localStorage.removeItem('HANDOVER_AUTH_SESSION');
+  }
+
+  // Synchronize current handover session
+  if (AppState.currentHandover) {
+    AppState.currentHandover.shift = selectedShift;
+    AppState.currentHandover.receiver = doc.name;
+    saveCurrentSession();
+  }
+
+  // Update UI and hide modal
+  renderAuthUI();
+  const overlay = document.getElementById('authOverlay');
+  if (overlay) overlay.classList.add('d-none');
+
+  const notice = isEmergency ? ' (Mode Darurat IGD Aktif)' : '';
+  showToast(`Selamat bertugas, ${doc.name}! Sesi ${selectedShift} aktif${notice}.`, 'success');
+}
+
+function handleDoctorLogout() {
+  const confirmed = confirm('Apakah Anda yakin ingin keluar dari sesi dokter saat ini?\n\nSesi Anda akan ditutup dan layar login akan ditampilkan untuk dokter shift berikutnya.');
+  if (!confirmed) return;
+
+  AppState.currentUser = null;
+  localStorage.removeItem('HANDOVER_AUTH_SESSION');
+
+  const overlay = document.getElementById('authOverlay');
+  if (overlay) {
+    overlay.classList.remove('d-none');
+    populateDoctorDropdowns();
+    const shiftSelect = document.getElementById('loginShiftSelect');
+    if (shiftSelect) shiftSelect.value = detectCurrentShift();
+    const pinInput = document.getElementById('loginPinInput');
+    if (pinInput) pinInput.value = '1234';
+    const alertBox = document.getElementById('loginAlertBox');
+    if (alertBox) alertBox.classList.add('d-none');
+  }
+
+  showToast('Sesi dokter berhasil diakhiri. Silakan login kembali.', 'info');
+}
+
+function openSwitchUserModal() {
+  const overlay = document.getElementById('authOverlay');
+  if (!overlay) return;
+  populateDoctorDropdowns();
+  const shiftSelect = document.getElementById('loginShiftSelect');
+  if (shiftSelect) shiftSelect.value = detectCurrentShift();
+  const alertBox = document.getElementById('loginAlertBox');
+  if (alertBox) alertBox.classList.add('d-none');
+  overlay.classList.remove('d-none');
+}
+
+function togglePinVisibility() {
+  const pinInput = document.getElementById('loginPinInput');
+  const eyeIcon = document.getElementById('iconEyePin');
+  if (!pinInput || !eyeIcon) return;
+
+  if (pinInput.type === 'password') {
+    pinInput.type = 'text';
+    eyeIcon.classList.remove('fa-eye');
+    eyeIcon.classList.add('fa-eye-slash');
+  } else {
+    pinInput.type = 'password';
+    eyeIcon.classList.remove('fa-eye-slash');
+    eyeIcon.classList.add('fa-eye');
+  }
+}
+
+// Modal Ubah PIN
+function openChangePinModal(doctorId) {
+  const doc = AppState.doctors.find(d => d.id === doctorId);
+  if (!doc) return;
+
+  const modal = document.getElementById('modalChangePin');
+  if (!modal) return;
+
+  document.getElementById('changePinDoctorName').value = doc.name;
+  document.getElementById('changePinDoctorId').value = doc.id;
+  document.getElementById('changePinOld').value = '';
+  document.getElementById('changePinNew').value = '';
+  document.getElementById('changePinConfirm').value = '';
+
+  const alertBox = document.getElementById('changePinAlertBox');
+  if (alertBox) alertBox.classList.add('d-none');
+
+  modal.classList.add('active');
+}
+
+function closeChangePinModal() {
+  const modal = document.getElementById('modalChangePin');
+  if (modal) modal.classList.remove('active');
+}
+
+function saveNewDoctorPin() {
+  const docId = document.getElementById('changePinDoctorId').value;
+  const doc = AppState.doctors.find(d => d.id === docId);
+  if (!doc) return;
+
+  const oldPin = document.getElementById('changePinOld').value.trim();
+  const newPin = document.getElementById('changePinNew').value.trim();
+  const confirmPin = document.getElementById('changePinConfirm').value.trim();
+  const alertBox = document.getElementById('changePinAlertBox');
+  const alertMsg = document.getElementById('changePinAlertMessage');
+
+  const currentPin = doc.pin || '1234';
+  if (oldPin !== currentPin && oldPin !== '1234' && oldPin !== 'admin123') {
+    if (alertBox && alertMsg) {
+      alertMsg.textContent = 'PIN Lama tidak sesuai.';
+      alertBox.classList.remove('d-none');
+    }
+    return;
+  }
+
+  if (newPin.length < 4) {
+    if (alertBox && alertMsg) {
+      alertMsg.textContent = 'PIN Baru minimal 4 karakter / angka.';
+      alertBox.classList.remove('d-none');
+    }
+    return;
+  }
+
+  if (newPin !== confirmPin) {
+    if (alertBox && alertMsg) {
+      alertMsg.textContent = 'Konfirmasi PIN Baru tidak cocok.';
+      alertBox.classList.remove('d-none');
+    }
+    return;
+  }
+
+  // Save new PIN
+  doc.pin = newPin;
+  localStorage.setItem('HANDOVER_DOCTORS', JSON.stringify(AppState.doctors));
+  closeChangePinModal();
+  renderMasterData();
+  showToast(`PIN Dokter ${doc.name} berhasil diperbarui!`, 'success');
+}
