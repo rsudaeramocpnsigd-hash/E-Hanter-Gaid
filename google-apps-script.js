@@ -4,7 +4,7 @@
  * ==============================================================================
  * 
  * Target Spreadsheet:
- * https://docs.google.com/spreadsheets/d/1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o/edit
+ * https://docs.google.com/spreadsheets/d/1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA/edit
  * 
  * CARA PEMASANGAN (HANYA 1 MENIT):
  * 1. Buka spreadsheet Google Sheets Anda di browser.
