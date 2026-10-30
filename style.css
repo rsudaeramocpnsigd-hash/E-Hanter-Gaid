@@ -2912,3 +2912,32 @@ select.form-control option {
   object-fit: contain;
   display: block;
 }
+
+/* Google Sheets Sync Controls */
+.btn-header-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #10b981;
+  color: #065f46;
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.btn-header-sync:hover {
+  background: #ffffff;
+  color: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.25);
+}
+
+.loading-spin {
+  opacity: 0.85;
+  pointer-events: none;
+}

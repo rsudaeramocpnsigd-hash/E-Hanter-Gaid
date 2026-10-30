@@ -44,6 +44,10 @@
     </div>
 
     <div class="header-right">
+      <button type="button" class="btn btn-outline btn-sm btn-header-sync" id="btnHeaderSyncAll" title="Tarik semua data pasien & riwayat shift dari Google Sheets">
+        <i class="fa-solid fa-cloud-arrow-down text-emerald"></i>
+        <span>Tarik Data Sheet</span>
+      </button>
       <a href="https://docs.google.com/spreadsheets/d/1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o/edit?usp=sharing"
         target="_blank" rel="noopener noreferrer" class="badge-gsheet-header" id="btnHeaderGSheetLink"
         title="Buka Spreadsheet Database di Google Sheets">
@@ -597,6 +601,13 @@
 
           <div class="filters-group">
             <div class="filter-item">
+              <label><i class="fa-solid fa-clock-rotate-left"></i> Filter Sesi:</label>
+              <select id="filterTrackerShift" class="form-control form-control-sm">
+                <option value="ALL">Semua Pasien IGD (Cloud + Lokal)</option>
+                <option value="CURRENT">Shift Berjalan Saja</option>
+              </select>
+            </div>
+            <div class="filter-item">
               <label><i class="fa-solid fa-filter"></i> Triase:</label>
               <select id="filterTriage" class="form-control form-control-sm">
                 <option value="ALL">Semua Triase</option>
@@ -629,6 +640,9 @@
 
             <button class="btn btn-secondary btn-sm" id="btnResetFilters">
               <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" id="btnTrackerSyncGSheet" title="Tarik data terbaru dari Google Sheets">
+              <i class="fa-solid fa-cloud-arrow-down text-emerald"></i> Tarik Data Sheet
             </button>
           </div>
         </div>

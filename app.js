@@ -63,7 +63,8 @@ let AppState = {
     search: '',
     triage: 'ALL',
     status: 'ALL',
-    dpjp: 'ALL'
+    dpjp: 'ALL',
+    shift: 'ALL'
   },
   signatures: {
     reporter: null,
@@ -82,6 +83,13 @@ function initApp() {
   startLiveClock();
   renderAllViews();
   checkAuthStatus();
+
+  // Auto-sinkronisasi data dari Google Sheets saat pertama dibuka (background silent)
+  if (AppState.gsheet && (AppState.gsheet.sheetId || AppState.gsheet.webAppUrl)) {
+    setTimeout(() => {
+      fetchMasterFromGoogleSheets(true);
+    }, 600);
+  }
 }
 
 function loadFromStorage() {
@@ -309,7 +317,11 @@ function populateDoctorDropdowns() {
 // 5.1 DASHBOARD STATS
 function renderDashboardStats() {
   const currentHandoverId = AppState.currentHandover ? AppState.currentHandover.id : '';
-  const currentPatients = AppState.patients.filter(p => p.handoverId === currentHandoverId);
+  let currentPatients = AppState.patients.filter(p => p.handoverId === currentHandoverId);
+  // Jika shift berjalan belum memiliki pasien tercatat, tampilkan seluruh pasien IGD aktif
+  if (currentPatients.length === 0 && AppState.patients.length > 0) {
+    currentPatients = AppState.patients;
+  }
 
   const countRed = currentPatients.filter(p => p.triage === 'Merah').length;
   const countYellow = currentPatients.filter(p => p.triage === 'Kuning').length;
@@ -357,7 +369,11 @@ function renderDashboardStats() {
 // 5.2 DASHBOARD PATIENTS TABLE
 function renderDashboardPatientTable() {
   const currentHandoverId = AppState.currentHandover ? AppState.currentHandover.id : '';
-  const patients = AppState.patients.filter(p => p.handoverId === currentHandoverId);
+  let patients = AppState.patients.filter(p => p.handoverId === currentHandoverId);
+  const isAllFallback = (patients.length === 0 && AppState.patients.length > 0);
+  if (isAllFallback) {
+    patients = AppState.patients;
+  }
   const tbody = document.getElementById('dashPatientTableBody');
   if (!tbody) return;
 
@@ -433,6 +449,25 @@ function populateHandoverForm() {
   if (sigLabelRec) sigLabelRec.textContent = h.receiver;
 }
 
+function importActivePatientsToCurrentShift() {
+  if (!AppState.currentHandover) return;
+  const currId = AppState.currentHandover.id;
+  const activePatients = AppState.patients.filter(p => p.status === 'Observasi' && p.handoverId !== currId);
+  
+  if (activePatients.length === 0) {
+    showToast('Tidak ada pasien observasi dari shift sebelumnya untuk dibawa.', 'info');
+    return;
+  }
+
+  activePatients.forEach(p => {
+    p.handoverId = currId;
+  });
+
+  saveToStorage();
+  renderAllViews();
+  showToast(`✓ Berhasil membawa ${activePatients.length} pasien observasi aktif ke shift berjalan ini.`, 'success');
+}
+
 function renderFormPatientsTable() {
   const currentHandoverId = AppState.currentHandover ? AppState.currentHandover.id : '';
   const patients = AppState.patients.filter(p => p.handoverId === currentHandoverId);
@@ -495,7 +530,10 @@ function renderFormPatientsTable() {
 // 5.4 LIVE PATIENT TRACKER
 function renderTrackerView() {
   const currentHandoverId = AppState.currentHandover ? AppState.currentHandover.id : '';
-  let filtered = AppState.patients.filter(p => p.handoverId === currentHandoverId);
+  const filterShift = (AppState.filters && AppState.filters.shift) ? AppState.filters.shift : 'ALL';
+  let filtered = (filterShift === 'CURRENT' && currentHandoverId)
+    ? AppState.patients.filter(p => p.handoverId === currentHandoverId)
+    : [...AppState.patients];
 
   // Apply filters
   const f = AppState.filters;
@@ -916,8 +954,7 @@ function setupEventListeners() {
 
   // Dashboard shortcuts
   document.getElementById('btnRefreshDashboard').addEventListener('click', () => {
-    renderAllViews();
-    showToast('Data dashboard telah disegarkan.', 'success');
+    fetchMasterFromGoogleSheets(false);
   });
 
   document.getElementById('btnGoToHandoverForm').addEventListener('click', () => {
@@ -977,11 +1014,13 @@ function setupEventListeners() {
   });
 
   document.getElementById('btnResetFilters').addEventListener('click', () => {
-    AppState.filters = { search: '', triage: 'ALL', status: 'ALL', dpjp: 'ALL' };
+    AppState.filters = { search: '', triage: 'ALL', status: 'ALL', dpjp: 'ALL', shift: 'ALL' };
     document.getElementById('trackerSearchInput').value = '';
     document.getElementById('filterTriage').value = 'ALL';
     document.getElementById('filterStatus').value = 'ALL';
     document.getElementById('filterDpjp').value = 'ALL';
+    const filterShiftEl = document.getElementById('filterTrackerShift');
+    if (filterShiftEl) filterShiftEl.value = 'ALL';
     renderTrackerView();
   });
 
@@ -1032,6 +1071,20 @@ function setupEventListeners() {
   // Google Sheets Cloud Integration Listeners
   const btnFetchGSheet = document.getElementById('btnFetchFromGSheet');
   if (btnFetchGSheet) btnFetchGSheet.addEventListener('click', () => fetchMasterFromGoogleSheets(false));
+
+  const btnHeaderSync = document.getElementById('btnHeaderSyncAll');
+  if (btnHeaderSync) btnHeaderSync.addEventListener('click', () => fetchMasterFromGoogleSheets(false));
+
+  const btnTrackerSync = document.getElementById('btnTrackerSyncGSheet');
+  if (btnTrackerSync) btnTrackerSync.addEventListener('click', () => fetchMasterFromGoogleSheets(false));
+
+  const filterTrackerShiftEl = document.getElementById('filterTrackerShift');
+  if (filterTrackerShiftEl) {
+    filterTrackerShiftEl.addEventListener('change', (e) => {
+      AppState.filters.shift = e.target.value;
+      renderTrackerView();
+    });
+  }
 
   const btnTestGSheet = document.getElementById('btnTestGSheetConnection');
   if (btnTestGSheet) btnTestGSheet.addEventListener('click', testGSheetConnection);
@@ -1633,110 +1686,260 @@ function extractSheetIdFromUrl(url) {
 }
 
 function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  return lines.map(line => {
-    const row = [];
-    let insideQuotes = false;
-    let field = '';
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') {
-        if (insideQuotes && line[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else {
-          insideQuotes = !insideQuotes;
-        }
-      } else if (c === ',' && !insideQuotes) {
-        row.push(field.trim());
-        field = '';
+  if (!text) return [];
+  const rows = [];
+  let row = [];
+  let field = '';
+  let insideQuotes = false;
+  const n = text.length;
+
+  for (let i = 0; i < n; i++) {
+    const c = text[i];
+    const nxt = (i + 1 < n) ? text[i + 1] : '';
+
+    if (c === '"') {
+      if (insideQuotes && nxt === '"') {
+        field += '"';
+        i++; // skip escaped double quote
       } else {
-        field += c;
+        insideQuotes = !insideQuotes;
       }
+    } else if (c === ',' && !insideQuotes) {
+      row.push(field.trim());
+      field = '';
+    } else if ((c === '\r' || c === '\n') && !insideQuotes) {
+      if (c === '\r' && nxt === '\n') {
+        i++;
+      }
+      row.push(field.trim());
+      if (row.some(f => f.length > 0)) {
+        rows.push(row);
+      }
+      row = [];
+      field = '';
+    } else {
+      field += c;
     }
+  }
+
+  if (field.length > 0 || row.length > 0) {
     row.push(field.trim());
-    return row;
-  });
+    if (row.some(f => f.length > 0)) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
 }
 
 async function fetchMasterFromGoogleSheets(silent = false) {
-  const sheetId = AppState.gsheet.sheetId || extractSheetIdFromUrl(AppState.gsheet.sheetUrl);
+  const sheetId = AppState.gsheet.sheetId || extractSheetIdFromUrl(AppState.gsheet.sheetUrl) || DEFAULT_GSHEET_CONFIG.sheetId;
   if (!sheetId) {
-    showToast('ID Spreadsheet Google belum ditentukan.', 'warning');
+    if (!silent) showToast('ID Spreadsheet Google belum ditentukan.', 'warning');
     return;
   }
 
-  if (!silent) showToast('Menghubungi Google Sheets...', 'info');
+  if (!silent) showToast('Menghubungi Google Sheets untuk menarik data...', 'info');
+
+  const syncBtns = document.querySelectorAll('.btn-sync-header, #btnHeaderSyncAll, #btnTrackerSyncGSheet, #btnFetchFromGSheet, #btnRefreshDashboard');
+  syncBtns.forEach(b => {
+    b.classList.add('loading-spin');
+    const ic = b.querySelector('i');
+    if (ic) ic.classList.add('fa-spin');
+  });
 
   try {
-    // 1. Tarik Master Dokter Jaga (Sheet USER)
-    const userUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=USER`;
-    const userResp = await fetch(userUrl);
-    if (!userResp.ok) throw new Error('Gagal mengakses lembar USER di Google Sheets');
-    const userCsv = await userResp.text();
-    const userRows = parseCsv(userCsv);
+    let docsUpdated = 0;
+    let dpjpUpdated = 0;
+    let patientsImported = 0;
+    let handoversImported = 0;
 
-    if (userRows.length > 1) {
-      const newDoctors = [];
-      for (let i = 1; i < userRows.length; i++) {
-        const row = userRows[i];
-        const name = (row[0] || '').replace(/^"|"$/g, '').trim();
-        const activeRaw = (row[1] || '1').replace(/^"|"$/g, '').toUpperCase();
-        const active = activeRaw !== '0' && activeRaw !== 'FALSE';
-        if (name) {
-          newDoctors.push({
-            id: `DOC-${String(newDoctors.length + 1).padStart(2, '0')}`,
-            name,
-            active
-          });
+    // 1. Tarik Master Dokter Jaga (Sheet USER)
+    try {
+      const userUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=USER`;
+      const userResp = await fetch(userUrl);
+      if (userResp.ok) {
+        const userCsv = await userResp.text();
+        const userRows = parseCsv(userCsv);
+        if (userRows.length > 1) {
+          const newDoctors = [];
+          for (let i = 1; i < userRows.length; i++) {
+            const row = userRows[i];
+            const name = (row[0] || '').replace(/^"|"$/g, '').trim();
+            const activeRaw = (row[1] || '1').replace(/^"|"$/g, '').toUpperCase();
+            const active = activeRaw !== '0' && activeRaw !== 'FALSE';
+            if (name) {
+              newDoctors.push({
+                id: `DOC-${String(newDoctors.length + 1).padStart(2, '0')}`,
+                name,
+                pin: '1234',
+                active
+              });
+            }
+          }
+          if (newDoctors.length > 0) {
+            AppState.doctors = newDoctors;
+            docsUpdated = newDoctors.length;
+          }
         }
       }
-      if (newDoctors.length > 0) {
-        AppState.doctors = newDoctors;
-      }
+    } catch (eDoc) {
+      console.warn('GSheet Sync USER warning:', eDoc);
     }
 
     // 2. Tarik Master DPJP (Sheet USER DPJP)
-    const dpjpUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=USER%20DPJP`;
-    const dpjpResp = await fetch(dpjpUrl);
-    if (!dpjpResp.ok) throw new Error('Gagal mengakses lembar USER DPJP di Google Sheets');
-    const dpjpCsv = await dpjpResp.text();
-    const dpjpRows = parseCsv(dpjpCsv);
+    try {
+      const dpjpUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=USER%20DPJP`;
+      const dpjpResp = await fetch(dpjpUrl);
+      if (dpjpResp.ok) {
+        const dpjpCsv = await dpjpResp.text();
+        const dpjpRows = parseCsv(dpjpCsv);
+        if (dpjpRows.length > 1) {
+          const newDpjps = [];
+          for (let i = 1; i < dpjpRows.length; i++) {
+            const row = dpjpRows[i];
+            const name = (row[0] || '').replace(/^"|"$/g, '').trim();
+            const activeRaw = (row[1] || '1').replace(/^"|"$/g, '').toUpperCase();
+            const active = activeRaw !== '0' && activeRaw !== 'FALSE';
 
-    if (dpjpRows.length > 1) {
-      const newDpjps = [];
-      for (let i = 1; i < dpjpRows.length; i++) {
-        const row = dpjpRows[i];
-        const name = (row[0] || '').replace(/^"|"$/g, '').trim();
-        const activeRaw = (row[1] || '1').replace(/^"|"$/g, '').toUpperCase();
-        const active = activeRaw !== '0' && activeRaw !== 'FALSE';
+            if (name) {
+              let specialist = 'Spesialis Konsultan';
+              if (name.includes('Sp.PD')) specialist = 'Penyakit Dalam';
+              else if (name.includes('Sp.B')) specialist = 'Bedah Umum';
+              else if (name.includes('Sp.A')) specialist = 'Kesehatan Anak';
+              else if (name.includes('Sp.OG')) specialist = 'Kebidanan & Kandungan';
+              else if (name.includes('Sp.S')) specialist = 'Neurologi / Saraf';
+              else if (name.includes('Sp.M')) specialist = 'Mata';
+              else if (name.includes('Sp.THT')) specialist = 'THT-KL';
+              else if (name.includes('Sp.KJ')) specialist = 'Kedokteran Jiwa';
+              else if (name.includes('Sp.JP')) specialist = 'Jantung & Pembuluh Darah';
+              else if (name.includes('Sp.An')) specialist = 'Anestesi & Perawatan Intensif';
+              else if (name.includes(',')) specialist = name.split(',').slice(1).join(',').trim();
 
-        if (name) {
-          // Extract specialty from name if contains comma
-          let specialist = 'Spesialis Konsultan';
-          if (name.includes('Sp.PD')) specialist = 'Penyakit Dalam';
-          else if (name.includes('Sp.B')) specialist = 'Bedah Umum';
-          else if (name.includes('Sp.A')) specialist = 'Kesehatan Anak';
-          else if (name.includes('Sp.OG')) specialist = 'Obstetri & Ginekologi';
-          else if (name.includes('Sp.S')) specialist = 'Neurologi / Saraf';
-          else if (name.includes('Sp.M')) specialist = 'Mata';
-          else if (name.includes('Sp.THT')) specialist = 'THT-KL';
-          else if (name.includes('Sp.KJ')) specialist = 'Kedokteran Jiwa';
-          else if (name.includes('Sp.JP')) specialist = 'Jantung & Pembuluh Darah';
-          else if (name.includes('Sp.An')) specialist = 'Anestesi & Perawatan Intensif';
-          else if (name.includes(',')) specialist = name.split(',').slice(1).join(',').trim();
-
-          newDpjps.push({
-            id: `DPJP-${String(newDpjps.length + 1).padStart(2, '0')}`,
-            name,
-            specialist,
-            active
-          });
+              newDpjps.push({
+                id: `DPJP-${String(newDpjps.length + 1).padStart(2, '0')}`,
+                name,
+                specialist,
+                active
+              });
+            }
+          }
+          if (newDpjps.length > 0) {
+            AppState.dpjps = newDpjps;
+            dpjpUpdated = newDpjps.length;
+          }
         }
       }
-      if (newDpjps.length > 0) {
-        AppState.dpjps = newDpjps;
+    } catch (eDpjp) {
+      console.warn('GSheet Sync DPJP warning:', eDpjp);
+    }
+
+    // 3. Tarik Seluruh Pasien (Sheet Pasien IGD)
+    try {
+      const pasienUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Pasien%20IGD`;
+      const pasienResp = await fetch(pasienUrl);
+      if (pasienResp.ok) {
+        const pasienCsv = await pasienResp.text();
+        const pasienRows = parseCsv(pasienCsv);
+        if (pasienRows.length > 1) {
+          const patientMap = new Map();
+          AppState.patients.forEach(p => {
+            if (p.id) patientMap.set(p.id, p);
+          });
+
+          for (let i = 1; i < pasienRows.length; i++) {
+            const r = pasienRows[i];
+            if (!r || r.length === 0 || !r[0]) continue;
+            const pid = (r[0] || '').replace(/^"|"$/g, '').trim();
+            if (!pid || pid === 'ID_Pasien_IGD') continue;
+
+            const pat = {
+              id: pid,
+              handoverId: (r[1] || '').replace(/^"|"$/g, '').trim(),
+              rm: (r[2] || '').replace(/^"|"$/g, '').trim(),
+              name: (r[3] || '').replace(/^"|"$/g, '').trim(),
+              age: (r[4] || '').replace(/^"|"$/g, '').trim(),
+              triage: (r[5] || 'Kuning').replace(/^"|"$/g, '').trim(),
+              diagnosis: (r[6] || '').replace(/^"|"$/g, '').trim(),
+              dpjp: (r[7] || '-').replace(/^"|"$/g, '').trim(),
+              lab: (r[8] || '-').replace(/^"|"$/g, '').trim(),
+              rad: (r[9] || '-').replace(/^"|"$/g, '').trim(),
+              condition: (r[10] || '-').replace(/^"|"$/g, '').trim(),
+              pending: (r[11] || '-').replace(/^"|"$/g, '').trim(),
+              spri: (r[12] || '-').replace(/^"|"$/g, '').trim(),
+              status: (r[13] || 'Observasi').replace(/^"|"$/g, '').trim()
+            };
+
+            if (!['Merah', 'Kuning', 'Hijau', 'Hitam'].includes(pat.triage)) {
+              if (pat.triage.toLowerCase().includes('merah')) pat.triage = 'Merah';
+              else if (pat.triage.toLowerCase().includes('kuning')) pat.triage = 'Kuning';
+              else if (pat.triage.toLowerCase().includes('hijau')) pat.triage = 'Hijau';
+              else if (pat.triage.toLowerCase().includes('hitam')) pat.triage = 'Hitam';
+              else pat.triage = 'Kuning';
+            }
+
+            patientMap.set(pid, pat);
+          }
+
+          AppState.patients = Array.from(patientMap.values());
+          patientsImported = AppState.patients.length;
+        }
       }
+    } catch (ePasien) {
+      console.warn('GSheet Sync Pasien IGD warning:', ePasien);
+    }
+
+    // 4. Tarik Seluruh Riwayat Shift (Sheet Handover)
+    try {
+      const hoUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Handover`;
+      const hoResp = await fetch(hoUrl);
+      if (hoResp.ok) {
+        const hoCsv = await hoResp.text();
+        const hoRows = parseCsv(hoCsv);
+        if (hoRows.length > 1) {
+          const hoMap = new Map();
+          AppState.handoverHistory.forEach(h => {
+            if (h.id) hoMap.set(h.id, h);
+          });
+
+          for (let i = 1; i < hoRows.length; i++) {
+            const r = hoRows[i];
+            if (!r || r.length === 0 || !r[0]) continue;
+            const hid = (r[0] || '').replace(/^"|"$/g, '').trim();
+            if (!hid || hid === 'ID_Handover') continue;
+
+            const date = (r[1] || '').replace(/^"|"$/g, '').trim();
+            const time = (r[2] || '').replace(/^"|"$/g, '').trim() || '08:00';
+            const shift = (r[3] || 'Shift Pagi (08.00 - 14.00)').replace(/^"|"$/g, '').trim();
+            const reporter = (r[4] || '-').replace(/^"|"$/g, '').trim();
+            const receiver = (r[5] || '-').replace(/^"|"$/g, '').trim();
+            const notes = (r[7] || '').replace(/^"|"$/g, '').trim();
+
+            const existing = hoMap.get(hid) || {};
+            const shiftPatients = AppState.patients.filter(p => p.handoverId === hid);
+
+            hoMap.set(hid, {
+              ...existing,
+              id: hid,
+              date: date || existing.date || new Date().toISOString().slice(0, 10),
+              time: time || existing.time || '08:00',
+              shift: shift || existing.shift || 'Shift Pagi (08.00 - 14.00)',
+              reporter: reporter || existing.reporter || 'Dokter IGD',
+              receiver: receiver || existing.receiver || 'Dokter IGD',
+              notes: notes || existing.notes || '',
+              locked: true,
+              timestamp: existing.timestamp || new Date().toISOString(),
+              patientsSnapshot: shiftPatients.length > 0 ? shiftPatients : (existing.patientsSnapshot || []),
+              signatures: existing.signatures || { reporter: null, receiver: null }
+            });
+          }
+
+          AppState.handoverHistory = Array.from(hoMap.values()).sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
+          handoversImported = AppState.handoverHistory.length;
+        }
+      }
+    } catch (eHo) {
+      console.warn('GSheet Sync Handover warning:', eHo);
     }
 
     AppState.gsheet.lastSync = new Date().toISOString();
@@ -1744,10 +1947,20 @@ async function fetchMasterFromGoogleSheets(silent = false) {
     renderAllViews();
     updateGSheetUI();
 
-    showToast(`✓ Master data Google Sheets disinkronkan: ${AppState.doctors.length} Dokter Jaga, ${AppState.dpjps.length} DPJP.`, 'success');
+    if (!silent) {
+      showToast(`✓ Berhasil memuat ${AppState.patients.length} Pasien IGD & ${AppState.handoverHistory.length} Riwayat Shift dari Google Sheets!`, 'success');
+    }
   } catch (err) {
     console.error('GSheet Sync Error:', err);
-    showToast('Gagal menarik data dari Google Sheets: ' + err.message, 'error');
+    if (!silent) {
+      showToast('Gagal menarik data dari Google Sheets: ' + err.message, 'error');
+    }
+  } finally {
+    syncBtns.forEach(b => {
+      b.classList.remove('loading-spin');
+      const ic = b.querySelector('i');
+      if (ic) ic.classList.remove('fa-spin');
+    });
   }
 }
 
