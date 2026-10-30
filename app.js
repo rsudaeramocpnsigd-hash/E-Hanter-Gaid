@@ -42,9 +42,9 @@ const DEFAULT_SAMPLE_PATIENTS = [];
 // 2. STATE APLIKASI
 // ==========================================================================
 const DEFAULT_GSHEET_CONFIG = {
-  sheetId: '1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA',
-  sheetUrl: 'https://docs.google.com/spreadsheets/d/1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA/edit?usp=sharing',
-  webAppUrl: '',
+  sheetId: '1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o',
+  sheetUrl: 'https://docs.google.com/spreadsheets/d/1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o/edit?usp=sharing',
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbzUoLenrSriKUSYojU2hyn1XQvrMxiV4OJG0IruMbPVzLWFnAJUtlbPIHNqNBb_ABsP1w/exec',
   lastSync: null
 };
 
@@ -146,13 +146,15 @@ function loadFromStorage() {
   if (savedGSheet) {
     try {
       AppState.gsheet = { ...DEFAULT_GSHEET_CONFIG, ...JSON.parse(savedGSheet) };
-      if (!AppState.gsheet.sheetId || AppState.gsheet.sheetId === '1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o') {
-        AppState.gsheet.sheetId = DEFAULT_GSHEET_CONFIG.sheetId;
-        AppState.gsheet.sheetUrl = DEFAULT_GSHEET_CONFIG.sheetUrl;
-      }
+      // Enforce official hardcoded spreadsheet and webhook URL
+      AppState.gsheet.sheetId = DEFAULT_GSHEET_CONFIG.sheetId;
+      AppState.gsheet.sheetUrl = DEFAULT_GSHEET_CONFIG.sheetUrl;
+      AppState.gsheet.webAppUrl = DEFAULT_GSHEET_CONFIG.webAppUrl;
     } catch (e) {
       AppState.gsheet = { ...DEFAULT_GSHEET_CONFIG };
     }
+  } else {
+    AppState.gsheet = { ...DEFAULT_GSHEET_CONFIG };
   }
 }
 
@@ -1224,6 +1226,10 @@ function finalizeHandoverSession() {
   saveCurrentSessionToHistory();
   saveToStorage();
   renderAllViews();
+  // Auto-sync langsung ke Google Sheets saat shift difinalisasi
+  if (AppState.gsheet && AppState.gsheet.webAppUrl) {
+    pushHandoverToGoogleSheets(false);
+  }
   showToast('Sesi Handover resmi difinalisasi dan tersimpan di riwayat!', 'success');
   switchTab('tab-report');
 }

@@ -16,7 +16,7 @@
     rel="stylesheet">
   <!-- Font Awesome Icons for Medical UI -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=gsheet-sync-20261029c">
+  <link rel="stylesheet" href="style.css?v=webhook-live-20261030">
 </head>
 
 <body>
@@ -44,7 +44,7 @@
     </div>
 
     <div class="header-right">
-      <a href="https://docs.google.com/spreadsheets/d/1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA/edit?usp=sharing"
+      <a href="https://docs.google.com/spreadsheets/d/1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o/edit?usp=sharing"
         target="_blank" rel="noopener noreferrer" class="badge-gsheet-header" id="btnHeaderGSheetLink"
         title="Buka Spreadsheet Database di Google Sheets">
         <i class="fa-solid fa-table text-emerald"></i>
@@ -973,11 +973,11 @@
                   <h4>Database Spreadsheet: E-Hanter Gaid (Google Sheets)</h4>
                   <p id="labelGSheetStatusDesc">Terkoneksi langsung ke Google Spreadsheet ID: <span
                       class="font-mono text-emerald"
-                      id="displaySheetId">1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA</span></p>
+                      id="displaySheetId">1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o</span></p>
                 </div>
               </div>
               <div class="gsheet-banner-actions">
-                <a href="https://docs.google.com/spreadsheets/d/1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA/edit?usp=sharing"
+                <a href="https://docs.google.com/spreadsheets/d/1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o/edit?usp=sharing"
                   target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm"
                   id="btnOpenSpreadsheetExternal">
                   <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Spreadsheet
@@ -993,7 +993,7 @@
               <div class="form-group">
                 <label for="inputGSheetUrl"><i class="fa-solid fa-link text-emerald"></i> URL Google Spreadsheet</label>
                 <input type="url" id="inputGSheetUrl" class="form-control font-mono"
-                  value="https://docs.google.com/spreadsheets/d/1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA/edit?usp=sharing"
+                  value="https://docs.google.com/spreadsheets/d/1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o/edit?usp=sharing"
                   placeholder="https://docs.google.com/spreadsheets/d/.../edit">
               </div>
 
@@ -1001,8 +1001,7 @@
                 <label for="inputGasWebAppUrl"><i class="fa-solid fa-code text-blue"></i> Web App Apps Script URL (Untuk
                   Dua Arah / Auto Push)</label>
                 <div class="input-with-button">
-                  <input type="url" id="inputGasWebAppUrl" class="form-control font-mono"
-                    placeholder="https://script.google.com/macros/s/.../exec">
+                  <input type="url" id="inputGasWebAppUrl" class="form-control font-mono" value="https://script.google.com/macros/s/AKfycbzUoLenrSriKUSYojU2hyn1XQvrMxiV4OJG0IruMbPVzLWFnAJUtlbPIHNqNBb_ABsP1w/exec" readonly>
                   <button type="button" class="btn btn-secondary btn-sm" id="btnOpenGasModal"
                     title="Buka Panduan & Salin Kode Apps Script">
                     <i class="fa-solid fa-book-open"></i> Panduan Script
@@ -1361,9 +1360,9 @@
         <div class="gas-sheet-link-banner">
           <div class="sheet-info">
             <h5><i class="fa-solid fa-table text-emerald"></i> Target Google Spreadsheet: E-Hanter Gaid</h5>
-            <p class="font-mono">ID: 1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA</p>
+            <p class="font-mono">ID: 1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o</p>
           </div>
-          <a href="https://docs.google.com/spreadsheets/d/1gdqvWMOfRmyBALEymuYrHmu7kWviHXf8CsgGK1EitFA/edit?usp=sharing"
+          <a href="https://docs.google.com/spreadsheets/d/1TKHVo7SMfZYa73_JaA8O4xp5QJS67p_DuqpX_2zDt2o/edit?usp=sharing"
             target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">
             <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Google Spreadsheet ↗
           </a>
@@ -1415,8 +1414,7 @@
             <i class="fa-solid fa-bolt text-emerald"></i> <strong>Koneksi Langsung Web App Apps Script:</strong>
           </label>
           <div class="input-with-button">
-            <input type="url" id="inputGasModalDirectUrl" class="form-control font-mono"
-              placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+            <input type="url" id="inputGasModalDirectUrl" class="form-control font-mono" value="https://script.google.com/macros/s/AKfycbzUoLenrSriKUSYojU2hyn1XQvrMxiV4OJG0IruMbPVzLWFnAJUtlbPIHNqNBb_ABsP1w/exec">
             <button type="button" class="btn btn-primary" id="btnSaveGasModalDirectAndSync">
               <i class="fa-solid fa-cloud-arrow-up"></i> Simpan & Kirim Data Handover 🚀
             </button>
@@ -1616,7 +1614,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Application Logic -->
-  <script src="app.js?v=gsheet-sync-20261029c"></script>
+  <script src="app.js?v=webhook-live-20261030"></script>
 </body>
 
 </html>
