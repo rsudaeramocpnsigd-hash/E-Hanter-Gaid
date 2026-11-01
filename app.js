@@ -851,6 +851,53 @@ function setupEventListeners() {
   }
 
   // Auth & Session Listeners
+  // Close Auth Modal (Kembali ke dashboard jika sudah ada dokter login)
+  const btnCloseAuth = document.getElementById('btnCloseAuthModal');
+  if (btnCloseAuth) {
+    btnCloseAuth.addEventListener('click', () => {
+      const overlay = document.getElementById('authOverlay');
+      if (overlay && AppState.currentUser) {
+        overlay.classList.add('d-none');
+        overlay.style.display = 'none';
+      }
+    });
+  }
+
+  // Interactive Shift Pills selection
+  const shiftPills = document.querySelectorAll('.shift-select-pill');
+  shiftPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const shiftVal = pill.getAttribute('data-shift');
+      const shiftSelect = document.getElementById('loginShiftSelect');
+      if (shiftSelect && shiftVal) {
+        shiftSelect.value = shiftVal;
+      }
+      shiftPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  // Listener perubahan select dokter untuk update dynamic preview
+  const authDocSel = document.getElementById('loginDoctorSelect');
+  if (authDocSel) {
+    authDocSel.addEventListener('change', () => {
+      syncAuthModalUI();
+    });
+  }
+
+  // Tombol Cepat Isi PIN Default 1234
+  const btnQuickPin = document.getElementById('btnQuickFillPin');
+  if (btnQuickPin) {
+    btnQuickPin.addEventListener('click', () => {
+      const pinInput = document.getElementById('loginPinInput');
+      if (pinInput) {
+        pinInput.value = '1234';
+        pinInput.focus();
+        showToast('PIN Standar 1234 otomatis terisi.', 'info');
+      }
+    });
+  }
+
   const btnHeaderSwitch = document.getElementById('btnHeaderSwitchDoctor');
   if (btnHeaderSwitch) {
     btnHeaderSwitch.addEventListener('click', openSwitchUserModal);
@@ -2768,6 +2815,64 @@ function detectCurrentShift() {
   }
 }
 
+function syncAuthModalUI() {
+  const overlay = document.getElementById('authOverlay');
+  if (!overlay) return;
+
+  // A. Tombol Tutup & Banner Sesi Aktif
+  const btnClose = document.getElementById('btnCloseAuthModal');
+  const bannerSession = document.getElementById('authCurrentSessionBanner');
+  const introDefault = document.getElementById('authIntroDefault');
+  const currentDocName = document.getElementById('authCurrentDoctorName');
+  const currentShiftName = document.getElementById('authCurrentShiftName');
+
+  if (AppState.currentUser) {
+    if (btnClose) btnClose.style.display = 'flex';
+    if (bannerSession) bannerSession.classList.remove('d-none');
+    if (introDefault) introDefault.classList.add('d-none');
+    if (currentDocName) currentDocName.textContent = AppState.currentUser.name;
+    if (currentShiftName) currentShiftName.textContent = AppState.currentUser.shift || 'Shift Aktif';
+  } else {
+    if (btnClose) btnClose.style.display = 'none';
+    if (bannerSession) bannerSession.classList.add('d-none');
+    if (introDefault) introDefault.classList.remove('d-none');
+  }
+
+  // B. Sinkronisasi Preview Profil Dokter Terpilih
+  const docSelect = document.getElementById('loginDoctorSelect');
+  const previewDocName = document.getElementById('previewDocName');
+  if (docSelect && AppState.doctors && AppState.doctors.length > 0) {
+    const selectedId = docSelect.value || (AppState.currentUser ? AppState.currentUser.id : AppState.doctors[0].id);
+    const doc = AppState.doctors.find(d => d.id === selectedId) || AppState.doctors[0];
+    if (doc && previewDocName) {
+      previewDocName.textContent = doc.name;
+    }
+  }
+
+  // C. Sinkronisasi Shift Selector Pills
+  const shiftSelect = document.getElementById('loginShiftSelect');
+  const detectedShift = detectCurrentShift();
+  const currentSelectedShift = (shiftSelect && shiftSelect.value) ? shiftSelect.value : detectedShift;
+
+  const pills = document.querySelectorAll('.shift-select-pill');
+  pills.forEach(pill => {
+    const pillShift = pill.getAttribute('data-shift');
+    if (pillShift === currentSelectedShift) {
+      pill.classList.add('active');
+    } else {
+      pill.classList.remove('active');
+    }
+  });
+
+  // Tampilkan badge 'Auto' pada shift yang sesuai jam saat ini
+  const tagPagi = document.getElementById('tagPagiAuto');
+  const tagSiang = document.getElementById('tagSiangAuto');
+  const tagMalam = document.getElementById('tagMalamAuto');
+  if (tagPagi) tagPagi.classList.toggle('d-none', !detectedShift.includes('Pagi'));
+  if (tagSiang) tagSiang.classList.toggle('d-none', !detectedShift.includes('Siang'));
+  if (tagMalam) tagMalam.classList.toggle('d-none', !detectedShift.includes('Malam'));
+}
+
 function checkAuthStatus() {
   const overlay = document.getElementById('authOverlay');
   if (!overlay) return;
@@ -2788,6 +2893,7 @@ function checkAuthStatus() {
     }
     const alertBox = document.getElementById('loginAlertBox');
     if (alertBox) alertBox.classList.add('d-none');
+    syncAuthModalUI();
   }
 }
 
@@ -2934,6 +3040,7 @@ function handleDoctorLogout() {
     if (pinInput) pinInput.value = '1234';
     const alertBox = document.getElementById('loginAlertBox');
     if (alertBox) alertBox.classList.add('d-none');
+    syncAuthModalUI();
   }
 
   showToast('Sesi dokter berhasil diakhiri. Silakan login kembali.', 'info');
@@ -2947,6 +3054,7 @@ function openSwitchUserModal() {
   if (shiftSelect) shiftSelect.value = detectCurrentShift();
   const alertBox = document.getElementById('loginAlertBox');
   if (alertBox) alertBox.classList.add('d-none');
+  syncAuthModalUI();
   overlay.classList.remove('d-none');
   overlay.style.display = 'flex';
 }

@@ -1459,42 +1459,80 @@
 
   <!-- ===================================================================== -->
   <!-- MODAL / OVERLAY PORTAL LOGIN DOKTER JAGA IGD -->
-  <!-- ===================================================================== -->
   <div class="auth-overlay" id="authOverlay">
+    <div class="auth-backdrop-decor">
+      <div class="decor-glow glow-1"></div>
+      <div class="decor-glow glow-2"></div>
+      <div class="decor-grid-pattern"></div>
+    </div>
+
     <div class="auth-container">
       <div class="auth-card">
+        <!-- Top Gradient Accent Bar -->
+        <div class="auth-card-topbar"></div>
+
+        <!-- Tombol Tutup (Hanya aktif jika sesi dokter sudah ada) -->
+        <button type="button" class="btn-auth-close" id="btnCloseAuthModal" title="Tutup / Kembali ke Aplikasi" style="display: none;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
         <!-- Brand Header -->
         <div class="auth-header">
           <div class="auth-logo-badge">
             <img src="LOGO 2.png" alt="Logo RSUD Aeramo" class="auth-logo-img">
+            <span class="auth-logo-live-ring" title="Sistem Aktif & Siap Siaga"></span>
           </div>
           <div class="auth-title-group">
             <div class="auth-hospital-tag">
-              <i class="fa-solid fa-hospital"></i> RSUD AERAMO • KABUPATEN NAGEKEO
+              <i class="fa-solid fa-hospital"></i>
+              <span>RSUD AERAMO • KAB. NAGEKEO</span>
+              <span class="auth-tag-dot"></span>
+              <span class="auth-tag-unit">IGD RESMI</span>
             </div>
-            <h2>E-Hanter Gaid</h2>
-            <p class="auth-subtitle">Elektronik Handover Dokter Jaga IGD</p>
+            <h2 class="auth-brand-name">E-Hanter Gaid</h2>
+            <p class="auth-subtitle">
+              <i class="fa-solid fa-clipboard-user text-emerald"></i> Elektronik Handover & Serah Terima Tugas Medis
+            </p>
           </div>
         </div>
 
-        <!-- Banner Info -->
-        <div class="auth-intro-box">
+        <!-- Current Active Session Banner (Tampil saat ganti dokter/shift) -->
+        <div class="auth-current-session-banner d-none" id="authCurrentSessionBanner">
+          <div class="curr-session-icon">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </div>
+          <div class="curr-session-info">
+            <span class="curr-lbl">Sesi Jaga Sedang Aktif:</span>
+            <div class="curr-doctor-line">
+              <strong id="authCurrentDoctorName">dr. Dian</strong>
+              <span class="curr-shift-badge" id="authCurrentShiftName">Shift Pagi</span>
+            </div>
+            <span class="curr-subtext">Pilih identitas baru di bawah untuk pergantian shift serah terima.</span>
+          </div>
+        </div>
+
+        <!-- Banner Intro Default -->
+        <div class="auth-intro-box" id="authIntroDefault">
           <div class="auth-intro-icon">
             <i class="fa-solid fa-shield-halved"></i>
           </div>
           <div class="auth-intro-text">
             <strong>Portal Autentikasi Dokter Jaga IGD</strong>
-            <p>Silakan pilih identitas dokter jaga dan shift dinas untuk memulai pencatatan serah terima tugas medis.</p>
+            <p>Silakan pilih identitas dokter jaga dan shift dinas untuk memulai operan serta dokumentasi rekam medis FORM-RM-IGD-07.</p>
           </div>
         </div>
 
         <!-- Form Login -->
         <form id="formDoctorLogin" class="auth-form" onsubmit="event.preventDefault(); handleDoctorLogin();">
-          <!-- Pilih Dokter Jaga -->
-          <div class="form-group mb-3">
-            <label for="loginDoctorSelect" class="form-label font-semibold">
-              <i class="fa-solid fa-user-doctor text-emerald"></i> Dokter Jaga yang Bertugas <span class="text-danger">*</span>
-            </label>
+          
+          <!-- 1. Pilih Dokter Jaga -->
+          <div class="form-group mb-3 auth-field-group">
+            <div class="auth-label-row">
+              <label for="loginDoctorSelect" class="form-label font-semibold auth-field-label">
+                <i class="fa-solid fa-user-doctor text-emerald"></i> Dokter Jaga yang Bertugas
+              </label>
+              <span class="auth-badge-required"><i class="fa-solid fa-asterisk text-xs"></i> Wajib</span>
+            </div>
             <div class="auth-input-wrap">
               <span class="auth-input-icon"><i class="fa-solid fa-stethoscope"></i></span>
               <select id="loginDoctorSelect" class="form-control auth-select" required>
@@ -1502,35 +1540,81 @@
                 <!-- Populated dynamically -->
               </select>
             </div>
+            
+            <!-- Dynamic Doctor Preview Chip -->
+            <div class="auth-doctor-preview-box" id="authDoctorPreviewBox">
+              <div class="doc-preview-avatar">
+                <i class="fa-solid fa-user-doctor"></i>
+              </div>
+              <div class="doc-preview-details">
+                <div class="doc-preview-name" id="previewDocName">dr. Dian</div>
+                <div class="doc-preview-meta">
+                  <span class="doc-role-badge"><i class="fa-solid fa-hospital-user"></i> Dokter Jaga IGD</span>
+                  <span class="doc-status-badge"><i class="fa-solid fa-circle-check text-emerald"></i> Siap Dinas</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- Shift Jaga dengan Auto-detect -->
-          <div class="form-group mb-3">
+          <!-- 2. Shift Jaga dengan Interactive Shift Pills & Auto-detect -->
+          <div class="form-group mb-3 auth-field-group">
             <div class="auth-label-row">
-              <label for="loginShiftSelect" class="form-label font-semibold">
-                <i class="fa-regular fa-clock text-emerald"></i> Shift Jaga Masuk <span class="text-danger">*</span>
+              <label for="loginShiftSelect" class="form-label font-semibold auth-field-label">
+                <i class="fa-regular fa-clock text-emerald"></i> Shift Jaga Masuk
               </label>
-              <span class="badge-auto-shift" id="badgeAutoShiftNotice" title="Otomatis mendeteksi waktu saat ini">
+              <span class="badge-auto-shift" id="badgeAutoShiftNotice" title="Otomatis mendeteksi waktu shift berdasarkan jam saat ini">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-deteksi Jam
               </span>
             </div>
-            <div class="auth-input-wrap">
-              <span class="auth-input-icon"><i class="fa-solid fa-calendar-check"></i></span>
-              <select id="loginShiftSelect" class="form-control auth-select" required>
-                <option value="Shift Pagi (08.00 - 14.00)">☀️ Shift Pagi (08.00 - 14.00)</option>
-                <option value="Shift Siang (14.00 - 20.00)">⛅ Shift Siang (14.00 - 20.00)</option>
-                <option value="Shift Malam (20.00 - 08.00)">🌙 Shift Malam (20.00 - 08.00)</option>
-              </select>
+
+            <!-- Interactive Shift Segmented Grid -->
+            <div class="auth-shift-selector-grid" id="authShiftSelectorGrid">
+              <button type="button" class="shift-select-pill active" data-shift="Shift Pagi (08.00 - 14.00)">
+                <span class="shift-pill-icon">☀️</span>
+                <div class="shift-pill-text">
+                  <strong class="shift-title">Shift Pagi</strong>
+                  <span class="shift-hours">08.00 - 14.00</span>
+                </div>
+                <span class="shift-pill-tag" id="tagPagiAuto">Auto</span>
+              </button>
+              <button type="button" class="shift-select-pill" data-shift="Shift Siang (14.00 - 20.00)">
+                <span class="shift-pill-icon">⛅</span>
+                <div class="shift-pill-text">
+                  <strong class="shift-title">Shift Siang</strong>
+                  <span class="shift-hours">14.00 - 20.00</span>
+                </div>
+                <span class="shift-pill-tag d-none" id="tagSiangAuto">Auto</span>
+              </button>
+              <button type="button" class="shift-select-pill" data-shift="Shift Malam (20.00 - 08.00)">
+                <span class="shift-pill-icon">🌙</span>
+                <div class="shift-pill-text">
+                  <strong class="shift-title">Shift Malam</strong>
+                  <span class="shift-hours">20.00 - 08.00</span>
+                </div>
+                <span class="shift-pill-tag d-none" id="tagMalamAuto">Auto</span>
+              </button>
             </div>
+
+            <!-- Hidden / synced select element for backward-compatibility with all existing scripts -->
+            <select id="loginShiftSelect" class="form-control auth-select auth-select-hidden" required>
+              <option value="Shift Pagi (08.00 - 14.00)">Shift Pagi (08.00 - 14.00)</option>
+              <option value="Shift Siang (14.00 - 20.00)">Shift Siang (14.00 - 20.00)</option>
+              <option value="Shift Malam (20.00 - 08.00)">Shift Malam (20.00 - 08.00)</option>
+            </select>
           </div>
 
-          <!-- PIN / Sandi Keamanan -->
-          <div class="form-group mb-3">
+          <!-- 3. PIN / Sandi Keamanan -->
+          <div class="form-group mb-3 auth-field-group">
             <div class="auth-label-row">
-              <label for="loginPinInput" class="form-label font-semibold">
-                <i class="fa-solid fa-key text-emerald"></i> PIN Medis / Kata Sandi <span class="text-danger">*</span>
+              <label for="loginPinInput" class="form-label font-semibold auth-field-label">
+                <i class="fa-solid fa-key text-emerald"></i> PIN Medis / Sandi Keamanan
               </label>
-              <span class="auth-pin-hint">PIN Standar: <code>1234</code></span>
+              <div class="auth-pin-quick-wrap">
+                <span class="auth-pin-hint">Standar: <code>1234</code></span>
+                <button type="button" class="btn-quick-pin" id="btnQuickFillPin" title="Klik untuk langsung mengisi PIN default 1234">
+                  <i class="fa-solid fa-bolt"></i> Isi 1234
+                </button>
+              </div>
             </div>
             <div class="auth-input-wrap">
               <span class="auth-input-icon"><i class="fa-solid fa-lock"></i></span>
@@ -1539,43 +1623,57 @@
                 <i class="fa-solid fa-eye" id="iconEyePin"></i>
               </button>
             </div>
-            <small class="auth-help-text">
-              <i class="fa-solid fa-circle-info"></i> PIN pengaman pencatatan lembar rekam medis FORM-RM-IGD-07.
-            </small>
+            <div class="auth-field-subtext">
+              <span><i class="fa-solid fa-shield-check text-emerald"></i> Terenkripsi aman sesuai FORM-RM-IGD-07 Kemenkes RI.</span>
+            </div>
           </div>
 
-          <!-- Pilihan Ingat Sesi -->
+          <!-- 4. Pilihan Ingat Sesi -->
           <div class="auth-options-row mb-3">
             <label class="remember-checkbox-label">
               <input type="checkbox" id="loginRememberMe" checked>
-              <span>Ingat sesi jaga di komputer/tablet ini</span>
+              <span class="remember-custom-check"></span>
+              <span class="remember-text">Ingat sesi dokter jaga pada browser/tablet ini</span>
             </label>
+            <span class="auth-cloud-badge" title="Data operan tersinkronisasi otomatis ke Google Sheets">
+              <i class="fa-solid fa-cloud-arrow-up text-emerald"></i> Cloud Sync
+            </span>
           </div>
 
           <!-- Error Alert Box -->
           <div class="auth-alert-box d-none" id="loginAlertBox">
-            <i class="fa-solid fa-circle-exclamation"></i>
+            <i class="fa-solid fa-triangle-exclamation"></i>
             <span id="loginAlertMessage">Nama Dokter atau PIN tidak valid.</span>
           </div>
 
           <!-- Action Buttons -->
           <div class="auth-actions-group">
             <button type="button" class="btn btn-primary btn-block btn-lg btn-auth-submit" id="btnLoginSubmit" onclick="handleDoctorLogin(false)">
-              <i class="fa-solid fa-right-to-bracket"></i> Masuk ke Sistem Handover
+              <div class="btn-auth-inner">
+                <span class="btn-text-main"><i class="fa-solid fa-right-to-bracket"></i> Masuk ke Sistem Handover</span>
+                <span class="btn-text-sub">Mulai Pencatatan & Operan Pasien Shift</span>
+              </div>
             </button>
-            <button type="button" class="btn btn-emergency-bypass btn-block" id="btnLoginEmergency" onclick="handleDoctorLogin(true)" title="Masuk cepat tanpa verifikasi PIN saat penanganan gawat darurat">
-              <i class="fa-solid fa-bolt-lightning text-amber"></i> Akses Cepat Darurat IGD (Bypass PIN)
+            <button type="button" class="btn btn-emergency-bypass btn-block" id="btnLoginEmergency" onclick="handleDoctorLogin(true)" title="Masuk cepat tanpa verifikasi PIN saat penanganan gawat darurat cito / resusitasi">
+              <div class="emergency-btn-inner">
+                <i class="fa-solid fa-bolt-lightning text-amber emergency-icon"></i>
+                <div class="emergency-text-group">
+                  <strong>Akses Cepat Darurat IGD (Bypass PIN)</strong>
+                  <span>Untuk situasi gawat darurat resusitasi & code red</span>
+                </div>
+              </div>
             </button>
           </div>
         </form>
 
         <!-- Footer Card -->
         <div class="auth-footer">
-          <div class="auth-footer-info">
-            <i class="fa-solid fa-hospital-user text-emerald"></i>
-            <span>Instalasi Gawat Darurat (IGD) RSUD Aeramo</span>
+          <div class="auth-footer-badges">
+            <span class="auth-footer-badge"><i class="fa-solid fa-hospital-user text-emerald"></i> IGD RSUD Aeramo</span>
+            <span class="auth-footer-badge"><i class="fa-solid fa-phone text-emerald"></i> 0821-4751-4367</span>
+            <span class="auth-footer-badge text-rose font-bold"><i class="fa-solid fa-truck-medical text-rose"></i> Call 119</span>
           </div>
-          <p class="auth-footer-address"><i class="fa-solid fa-location-dot text-emerald"></i> Jln. Prof W Z Yohanes, Kode Pos 86472 • <i class="fa-solid fa-phone text-emerald"></i> Telp IGD: 0821-4751-4367</p>
+          <p class="auth-footer-address">Jln. Prof W Z Yohanes, Kode Pos 86472, Kab. Nagekeo, Nusa Tenggara Timur</p>
           <p class="auth-footer-copy">&copy; 2026 E-Hanter Gaid • FORM-RM-IGD-07 Rekam Medis Kemenkes RI</p>
         </div>
       </div>
